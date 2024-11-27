@@ -1,3 +1,5 @@
+import os
+import sys
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay, cKDTree
 import matplotlib.pyplot as plt
@@ -145,8 +147,6 @@ def plot_molecule_with_hull(azim=360, elev=-64):
         ax.plot_trisurf(x, y, z, color='cyan', alpha=0.5, linewidth=0)
 
     max_radius = max(vdw_radii.values())
-    min_coords = np.min(coords, axis=0) - max_radius
-    max_coords = np.max(coords, axis=0) + max_radius
 
     unique_atoms = set(atoms)
     legend_elements = []
@@ -244,7 +244,6 @@ def plot_points_in_hull(azim=360, elev=-64):
     ax = fig.add_subplot(111, projection='3d', facecolor='whitesmoke')
 
     grid_resolution = 0.25
-    atom_radii = np.array([vdw_radii.get(atom, 1.5) for atom in atoms])
 
     hull = ConvexHull(coords)
     hull_points = coords[hull.vertices]
