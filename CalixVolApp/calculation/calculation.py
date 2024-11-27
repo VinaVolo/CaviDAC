@@ -1,10 +1,10 @@
 import os
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 import json
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay, cKDTree
-from src.utils.paths import get_project_path
+from CalixVolApp.utils.paths import get_project_path
 
 
 def read_coordinates_from_file(file_path):
@@ -97,10 +97,10 @@ def estimate_internal_volume(atoms, coordinates, grid_resolution=0.1):
 
 if __name__ == "__main__":
 
-    with open(os.path.join(get_project_path(), 'data', 'vdw', 'vdw_radius.json'), "r") as file:
+    with open(os.path.join(get_project_path(), 'CalixVolApp', 'data', 'vdw', 'vdw_radius.json'), "r") as file:
         vdw_radii = json.load(file)
 
-    filename = os.path.join(get_project_path(), 'data', 'molecules', '3.txt')
+    filename = os.path.join(get_project_path(), 'CalixVolApp', 'data', 'molecules', '3.txt')
 
     atoms, coordinates = read_coordinates_from_file(filename)
 
