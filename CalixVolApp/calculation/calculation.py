@@ -96,12 +96,14 @@ class ConvexHullVolumeEstimator(IVolumeEstimator):
                     is_inside_atom[idx] = True
                     break
 
+        # Общий объем выпуклой оболочки
         volume_total = convex_hull.volume
+        # Объем, занятый атомами (как и прежде)
         volume_atom = np.sum(is_inside_atom) * (grid_resolution ** 3)
-        volume_cavity = np.sum(~is_inside_atom) * (grid_resolution ** 3)
+        # Новый способ вычисления объема полости: разность между объемом конвекс-холла и атомным объемом
+        volume_cavity = volume_total - volume_atom
 
         return volume_total, volume_atom, volume_cavity
-
 
 # ===== Высокоуровневый код (композиция) =====
 
