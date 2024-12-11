@@ -12,26 +12,99 @@ from CalixVolApp.utils.paths import get_project_path
 class IMoleculeReader(ABC):
     @abstractmethod
     def read(self, file_path: str):
+        """
+        Reads molecule from a file and returns its atoms and coordinates.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to a file containing molecule coordinates.
+
+        Returns
+        -------
+        atoms : list
+            List of atoms in a molecule.
+        coordinates : numpy.ndarray
+            Array of shape (n_atoms, 3) containing coordinates of atoms in a molecule.
+        """
         pass
 
 
 class IVDWRadiusProvider(ABC):
     @abstractmethod
     def get_radius(self, atom: str) -> float:
+        """
+        Returns van der Waals radius of given atom in angstroms.
+
+        Parameters
+        ----------
+        atom : str
+            Atomic symbol.
+
+        Returns
+        -------
+        float
+            Van der Waals radius in angstroms.
+
+        Raises
+        ------
+        KeyError
+            If atom is not found in the provider database.
+        """
         pass
 
 
 class IVolumeEstimator(ABC):
     @abstractmethod
     def estimate(self, atoms, coordinates, vdw_provider: IVDWRadiusProvider, grid_resolution: float = 0.1):
+        """
+        Estimates volume of a molecule.
+
+        Parameters
+        ----------
+        atoms : list
+            List of atoms in a molecule.
+        coordinates : numpy.ndarray
+            Array of shape (n_atoms, 3) containing coordinates of atoms in a molecule.
+        vdw_provider : IVDWRadiusProvider
+            Provider of van der Waals radii.
+        grid_resolution : float, optional
+            Resolution of the grid for estimation, by default 0.1
+
+        Returns
+        -------
+        tuple
+            Tuple of three floats containing total volume, volume of atoms and volume of cavity.
+
+        Raises
+        ------
+        ValueError
+            If grid_resolution is not positive.
+        """
         pass
 
 
 class MoleculeFileReader(IMoleculeReader):
-    """
-    Класс, отвечающий за чтение молекулярных данных из файла.
-    """
     def read(self, file_path: str):
+        """
+        Reads atomic symbols and coordinates from a file.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the file containing atomic symbols and coordinates.
+
+        Returns
+        -------
+        tuple
+            Tuple of two elements. The first element is a list of atomic symbols, the second is a 2D numpy array of shape (n_atoms, 3) containing coordinates of atoms.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        """
+        
         atomic_symbols = []
         coordinates = []
         with open(file_path) as file:
@@ -43,28 +116,73 @@ class MoleculeFileReader(IMoleculeReader):
 
 
 class JsonVDWRadiusProvider(IVDWRadiusProvider):
-    """
-    Класс, отвечающий за предоставление ван-дер-ваальсовых радиусов атомов из JSON-файла.
-    """
     def __init__(self, json_file_path: str):
+        """
+        Initializes the provider from a JSON file.
+
+        Parameters
+        ----------
+        json_file_path : str
+            Path to the JSON file containing van der Waals radii.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        """
         with open(json_file_path, "r") as file:
             self._vdw_radii = json.load(file)
 
     def get_radius(self, atom: str) -> float:
-        # Возвращаем радиус, при отсутствии используем значение по умолчанию
+        """
+        Returns the van der Waals radius for the given atom.
+
+        Parameters
+        ----------
+        atom : str
+            Atomic symbol
+
+        Returns
+        -------
+        float
+            Van der Waals radius in Angstroms
+
+        Raises
+        ------
+        KeyError
+            If the atom is not found in the database.
+        """
+
         return self._vdw_radii.get(atom, 1.5)
 
 
 class ConvexHullVolumeEstimator(IVolumeEstimator):
-    """
-    Класс для оценки объема молекулы по выпуклой оболочке и распределению точек.
-    Отвечает за вычисления, не зависит напрямую от конкретных реализаций чтения данных или радиусов.
-    """
     def estimate(self, atoms, coordinates, vdw_provider: IVDWRadiusProvider, grid_resolution: float = 0.1):
-        # Получаем радиусы для всех атомов
-        atom_radii = np.array([vdw_provider.get_radius(atom) for atom in atoms])
+        """
+        Estimates the volume of a molecule.
 
-        # Вычисляем выпуклую оболочку
+        Parameters
+        ----------
+        atoms : list
+            List of atomic symbols.
+        coordinates : numpy.ndarray
+            Array of shape (n_atoms, 3) containing coordinates of atoms in a molecule.
+        vdw_provider : IVDWRadiusProvider
+            Provider of van der Waals radii.
+        grid_resolution : float, optional
+            Resolution of the grid for estimation, by default 0.1
+
+        Returns
+        -------
+        tuple
+            Tuple of three floats containing total volume, volume of atoms and volume of cavity.
+
+        Raises
+        ------
+        ValueError
+            If grid_resolution is not positive.
+        """
+        atom_radii = np.array([vdw_provider.get_radius(atom) for atom in atoms])
         convex_hull = ConvexHull(coordinates)
         hull_vertices = coordinates[convex_hull.vertices]
 
@@ -72,19 +190,16 @@ class ConvexHullVolumeEstimator(IVolumeEstimator):
         min_bounds = np.min(hull_vertices, axis=0) - max_vdw_radius
         max_bounds = np.max(hull_vertices, axis=0) + max_vdw_radius
 
-        # Создаем 3D сетку точек
         grid_x = np.arange(min_bounds[0], max_bounds[0], grid_resolution)
         grid_y = np.arange(min_bounds[1], max_bounds[1], grid_resolution)
         grid_z = np.arange(min_bounds[2], max_bounds[2], grid_resolution)
         grid_x, grid_y, grid_z = np.meshgrid(grid_x, grid_y, grid_z)
         grid_points = np.vstack((grid_x.ravel(), grid_y.ravel(), grid_z.ravel())).T
 
-        # Определяем точки внутри оболочки
         delaunay = Delaunay(hull_vertices)
         points_within_hull = delaunay.find_simplex(grid_points) >= 0
         hull_points = grid_points[points_within_hull]
 
-        # Определяем точки внутри атомов
         kdtree = cKDTree(coordinates)
         indices_within_atoms = kdtree.query_ball_point(hull_points, r=np.max(atom_radii))
         is_inside_atom = np.zeros(len(hull_points), dtype=bool)
@@ -96,35 +211,55 @@ class ConvexHullVolumeEstimator(IVolumeEstimator):
                     is_inside_atom[idx] = True
                     break
 
-        # Общий объем выпуклой оболочки
         volume_total = convex_hull.volume
-        # Объем, занятый атомами (как и прежде)
         volume_atom = np.sum(is_inside_atom) * (grid_resolution ** 3)
-        # Новый способ вычисления объема полости: разность между объемом конвекс-холла и атомным объемом
         volume_cavity = volume_total - volume_atom
 
         return volume_total, volume_atom, volume_cavity
 
-# ===== Высокоуровневый код (композиция) =====
-
 class MoleculeVolumeCalculator:
-    """
-    Высокоуровневый класс, который объединяет в себе все шаги:
-    - Чтение молекулы
-    - Получение радиусов
-    - Расчет объемов
-    Это точки входа в функциональность.
-    """
-
     def __init__(self, 
                  reader: IMoleculeReader, 
                  vdw_provider: IVDWRadiusProvider,
                  estimator: IVolumeEstimator):
+        """
+        Constructor of MoleculeVolumeCalculator
+
+        Parameters
+        ----------
+        reader : IMoleculeReader
+            The reader that reads atomic symbols and coordinates from a file.
+        vdw_provider : IVDWRadiusProvider
+            The provider that provides Van der Waals radii of atoms.
+        estimator : IVolumeEstimator
+            The estimator that estimates the volume of a molecule.
+        """
         self.reader = reader
         self.vdw_provider = vdw_provider
         self.estimator = estimator
 
     def calculate(self, molecule_file_path: str, grid_resolution=0.1):
+        """
+        Calculates the volume of a molecule.
+
+        Parameters
+        ----------
+        molecule_file_path : str
+            Path to the file containing the molecule.
+        grid_resolution : float, optional
+            Resolution of the grid for estimation, by default 0.1
+
+        Returns
+        -------
+        tuple
+            Tuple of three floats containing total volume, volume of atoms and volume of cavity.
+
+        Raises
+        ------
+        ValueError
+            If grid_resolution is not positive.
+        """
+
         atoms, coordinates = self.reader.read(molecule_file_path)
         volume_total, volume_atom, volume_cavity = self.estimator.estimate(atoms, coordinates, self.vdw_provider, grid_resolution)
         
