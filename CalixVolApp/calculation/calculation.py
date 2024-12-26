@@ -279,6 +279,6 @@ if __name__ == "__main__":
 
     volume_total, volume_atom, volume_cavity = calculator.calculate(molecule_file, grid_resolution=0.1)
 
-    print(f"Общий объем выпуклой оболочки: {volume_total:.2f} Å³")
-    print(f"Объем, занятый атомами: {volume_atom:.2f} Å³")
-    print(f"Объем полости: {volume_cavity:.2f} Å³")
+    print(f"Total volume of the convex hull: {volume_total:.2f} Å³")
+    print(f"The volume occupied by atoms: {volume_atom:.2f} Å³")
+    print(f"Cavity volume: {volume_cavity:.2f} Å³")

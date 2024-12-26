@@ -47,10 +47,10 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         The name of the loaded file is then displayed in the GUI.
         """
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите файл с координатами", "", "Text Files (*.txt);;All Files (*)")
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select the file with the coordinates", "", "Text Files (*.txt);;All Files (*)")
         if file_name:
             self.file_path_1 = file_name
-            self.file_name_1.setText(f"Файл загружен: {os.path.basename(file_name)}")
+            self.file_name_1.setText(f"The file is uploaded: {os.path.basename(file_name)}")
 
     def load_file_2(self):
         """
@@ -58,10 +58,10 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         The name of the loaded file is then displayed in the GUI.
         """
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите файл с координатами", "", "Text Files (*.txt);;All Files (*)")
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select the file with the coordinates", "", "Text Files (*.txt);;All Files (*)")
         if file_name:
             self.file_path_2 = file_name
-            self.file_name_2.setText(f"Файл загружен: {os.path.basename(file_name)}")
+            self.file_name_2.setText(f"The file is uploaded: {os.path.basename(file_name)}")
 
     def load_file_3(self):
         """
@@ -69,10 +69,10 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         The name of the loaded file is then displayed in the GUI.
         """
-        file_name, _ = QFileDialog.getOpenFileName(self, "Выберите файл с координатами", "", "Text Files (*.txt);;All Files (*)")
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select the file with the coordinates", "", "Text Files (*.txt);;All Files (*)")
         if file_name:
             self.file_path_3 = file_name
-            self.file_name_3.setText(f"Файл загружен: {os.path.basename(file_name)}")
+            self.file_name_3.setText(f"The file is uploaded: {os.path.basename(file_name)}")
 
     def calculate_volumes(self):
         """
@@ -87,7 +87,7 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
         :return: None
         """
         if not (self.file_path_1 or self.file_path_2 or self.file_path_3):
-            QMessageBox.warning(self, "Ошибка", "Сначала загрузите хотя бы один файл!")
+            QMessageBox.warning(self, "Error", "Download at least one file first!")
             return
 
         try:
@@ -99,9 +99,9 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
             if self.file_path_1:
                 hull_volume_1, atom_volume_1, cavity_volume_1 = self.calculator.calculate(self.file_path_1, grid_resolution=0.1)
-                result_text_1 = (f"Объём выпуклой оболочки: {hull_volume_1:.2f} Å³\n"
-                                 f"Объём атомов: {atom_volume_1:.2f} Å³\n"
-                                 f"Объём полости: {cavity_volume_1:.2f} Å³")
+                result_text_1 = (f"The volume of the convex hull: {hull_volume_1:.2f} Å³\n"
+                                 f"The volume occupied by atoms: {atom_volume_1:.2f} Å³\n"
+                                 f"Cavity volume: {cavity_volume_1:.2f} Å³")
                 self.volume_print_1.setText(result_text_1)
 
                 atoms_1, coords_1 = self.calculator.reader.read(self.file_path_1)
@@ -116,9 +116,9 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
             if self.file_path_2:
                 hull_volume_2, atom_volume_2, cavity_volume_2 = self.calculator.calculate(self.file_path_2, grid_resolution=0.1)
-                result_text_2 = (f"Объём выпуклой оболочки: {hull_volume_2:.2f} Å³\n"
-                                 f"Объём атомов: {atom_volume_2:.2f} Å³\n"
-                                 f"Объём полости: {cavity_volume_2:.2f} Å³")
+                result_text_2 = (f"The volume of the convex hull: {hull_volume_2:.2f} Å³\n"
+                                 f"The volume occupied by atoms: {atom_volume_2:.2f} Å³\n"
+                                 f"Cavity volume: {cavity_volume_2:.2f} Å³")
                 self.volume_print_2.setText(result_text_2)
 
                 atoms_2, coords_2 = self.calculator.reader.read(self.file_path_2)
@@ -132,9 +132,9 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
             if self.file_path_3:
                 hull_volume_3, atom_volume_3, cavity_volume_3 = self.calculator.calculate(self.file_path_3, grid_resolution=0.1)
-                result_text_3 = (f"Объём выпуклой оболочки: {hull_volume_3:.2f} Å³\n"
-                                 f"Объём атомов: {atom_volume_3:.2f} Å³\n"
-                                 f"Объём полости: {cavity_volume_3:.2f} Å³")
+                result_text_3 = (f"The volume of the convex hull: {hull_volume_3:.2f} Å³\n"
+                                 f"The volume occupied by atoms: {atom_volume_3:.2f} Å³\n"
+                                 f"Cavity volume: {cavity_volume_3:.2f} Å³")
                 self.volume_print_3.setText(result_text_3)
 
                 atoms_3, coords_3 = self.calculator.reader.read(self.file_path_3)
@@ -147,7 +147,7 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
                 self.plot_graphs(plots_3, container="file3")
 
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Ошибка при расчете объема: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error in volume calculation: {str(e)}")
 
     def plot_graphs(self, figures, container):
         if container == "file1":

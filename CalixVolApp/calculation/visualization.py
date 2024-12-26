@@ -67,7 +67,7 @@ class BasePlot(ABC):
 
 class SimpleMoleculePlot(BasePlot):
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D визуализация молекулы')
+        fig, ax = self._create_3d_axis('3D visualization of a molecule')
         self._plot_atoms_as_points(ax)
         self._add_legend(ax)
         self._style_axis(ax, azim, elev)
@@ -77,7 +77,7 @@ class SimpleMoleculePlot(BasePlot):
 
 class VDWMoleculePlot(BasePlot):
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D визуализация с ван-дер-ваальсовыми радиусами')
+        fig, ax = self._create_3d_axis('3D visualization with van der Waals radii')
 
         # Атомы как сферы
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
@@ -108,7 +108,7 @@ class VDWMoleculePlot(BasePlot):
 
 class HullMoleculePlot(BasePlot):
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D визуализация молекулы с выпуклой оболочкой')
+        fig, ax = self._create_3d_axis("3D visualisation of a molecule with a convex hull")
 
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, '#808080')
@@ -139,7 +139,7 @@ class GridHullPlot(BasePlot):
         self.grid_resolution = grid_resolution
 
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D молекула с сеткой точек и выпуклой оболочкой')
+        fig, ax = self._create_3d_axis("3D molecule with a grid of points and a convex shell")
 
         number_of_points = 20000
 
@@ -151,7 +151,7 @@ class GridHullPlot(BasePlot):
         cube_points = np.random.uniform(low=min_coords, high=max_coords, size=(number_of_points, 3))
 
         ax.scatter(cube_points[:, 0], cube_points[:, 1], cube_points[:, 2],
-               color='blue', s=1, alpha=0.6, label='Случайные точки')
+               color='blue', s=1, alpha=0.6, label='Random points')
 
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, '#808080')
@@ -190,7 +190,7 @@ class PointsInHullPlot(BasePlot):
         self.grid_resolution = grid_resolution
 
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D молекула с точками внутри выпуклой оболочки')
+        fig, ax = self._create_3d_axis("3D molecule with dots inside a convex hull")
 
         number_of_points = 80000
 
@@ -206,12 +206,9 @@ class PointsInHullPlot(BasePlot):
         inside_hull = delaunay.find_simplex(random_points) >= 0
         points_in_hull = random_points[inside_hull]
 
-        # Точки внутри оболочки
         ax.scatter(points_in_hull[:, 0], points_in_hull[:, 1], points_in_hull[:, 2],
-               color='cyan', s=3, alpha=0.8, label='Случайные точки внутри выпуклой оболочки')
+               color='cyan', s=3, alpha=0.8, label='Random points inside a convex hull')
 
-
-        # Атомы
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, '#808080')
             radius = self.mol.vdw_radii.get(atom, 1.5)
@@ -221,13 +218,11 @@ class PointsInHullPlot(BasePlot):
             z_sphere = radius * np.cos(v) + coord[2]
             ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, linewidth=0, shade=True, alpha=0.6)
 
-        # Выпуклая оболочка
         for simplex in hull.simplices:
             triangle = self.mol.coords[simplex]
             ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2],
                             color='cyan', alpha=0, linewidth=0)
 
-        # Легенда
         unique_atoms = self.mol.get_unique_atoms()
         legend_elements = []
         for element in unique_atoms:
@@ -249,7 +244,7 @@ class PointsInAtomsPlot(BasePlot):
         self.grid_resolution = grid_resolution
 
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D визуализация: точки внутри атомов и в полостях')
+        fig, ax = self._create_3d_axis("3D visualisation: points inside atoms and cavities")
 
         number_of_points = 100000
 
@@ -279,19 +274,16 @@ class PointsInAtomsPlot(BasePlot):
                     inside_atom[i] = True
                     break
 
-        # Точки внутри атомов (зеленые)
         ax.scatter(points_in_hull[inside_atom, 0],
                    points_in_hull[inside_atom, 1],
                    points_in_hull[inside_atom, 2],
-                   color='green', s=4, alpha=0.2, label='Точки внутри атомов')
+                   color='green', s=4, alpha=0.2, label='Points inside vdw spheres')
 
-        # Точки в полостях (синие)
         ax.scatter(points_in_hull[~inside_atom, 0],
                    points_in_hull[~inside_atom, 1],
                    points_in_hull[~inside_atom, 2],
-                   color='blue', s=5, alpha=0.7, label='Точки в полостях')
+                   color='blue', s=5, alpha=0.7, label='Points in the cavities')
 
-        # Атомы
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, '#808080')
             radius = self.mol.vdw_radii.get(atom, 1.5)
@@ -301,21 +293,19 @@ class PointsInAtomsPlot(BasePlot):
             z_sphere = radius * np.cos(v) + coord[2]
             ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, alpha=0.6)
 
-        # Выпуклая оболочка
         for simplex in hull.simplices:
             triangle = self.mol.coords[simplex]
             ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2], color='cyan', alpha=0)
 
-        # Легенда
         unique_atoms = self.mol.get_unique_atoms()
         legend_elements = []
         for element in unique_atoms:
             color = self.mol.atom_colors.get(element, '#808080')
             legend_elements.append(Line2D([0], [0], marker='o', color='w', label=element,
                                           markerfacecolor=color, markersize=12, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points in free cavities',
+        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points in the cavities',
                                       markerfacecolor='blue', markersize=12, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Dots inside atoms',
+        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points inside vdw spheres',
                                       markerfacecolor='green', markersize=12, markeredgecolor='k'))
 
         ax.legend(
@@ -331,15 +321,3 @@ class PointsInAtomsPlot(BasePlot):
         self._style_axis(ax, azim, elev)
         plt.tight_layout()
         return fig
-
-
-# Пример использования:
-# Создаем объект MoleculeData:
-# mol_data = MoleculeData(atoms, coords, atom_colors, vdw_radii)
-
-# Создаем объект для каждого типа графика и строим:
-# simple_plot = SimpleMoleculePlot(mol_data)
-# fig = simple_plot.plot(azim=30, elev=45)
-# fig.savefig('simple_plot.png')
-
-# Таким образом мы можем достать любой график независимо друг от друга.

@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>&quot;Файл не загружен&quot;</string>
+     <string>‘File not uploaded.’</string>
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
@@ -43,7 +43,7 @@
      <string notr="true"/>
     </property>
     <property name="text">
-     <string>Рассчитать объем</string>
+     <string>Calculate the volume</string>
     </property>
    </widget>
    <widget class="QTabWidget" name="tabWidget">
@@ -56,11 +56,11 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
-      <string>Tab 1</string>
+      <string>Single molecule calculation</string>
      </attribute>
      <widget class="QWidget" name="widget_results_1" native="true">
       <property name="geometry">
@@ -114,7 +114,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Загрузить файл</string>
+       <string>Upload file</string>
       </property>
      </widget>
      <widget class="QWidget" name="widget_fig_1" native="true">
@@ -178,7 +178,7 @@
     </widget>
     <widget class="QWidget" name="tab_2">
      <attribute name="title">
-      <string>Tab 2</string>
+      <string>Calculation of two molecules</string>
      </attribute>
      <widget class="QPushButton" name="loadFileButton_2">
       <property name="geometry">
@@ -190,7 +190,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Загрузить файл 1</string>
+       <string>Upload file 1</string>
       </property>
      </widget>
      <widget class="QWidget" name="widget_results_2" native="true">
@@ -345,7 +345,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Загрузить файл 2</string>
+       <string>Upload file 2</string>
       </property>
      </widget>
      <widget class="QWidget" name="widget_fig_3" native="true">
