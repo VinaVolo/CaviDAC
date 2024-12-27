@@ -164,7 +164,6 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
             canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
             layout = QtWidgets.QVBoxLayout(widget)
             layout.addWidget(canvas)
-            layout.setContentsMargins(0, 0, 0, 0)
             canvas.figure.tight_layout()
             canvas.draw()
 

@@ -22,9 +22,24 @@ class BasePlot(ABC):
 
     @abstractmethod
     def plot(self, azim=45, elev=30):
+        """
+        Create a 3D visualization of the molecule.
+
+        Parameters
+        ----------
+        azim : float, optional
+            The azimuthal angle in the x-y plane. Default is 45.
+        elev : float, optional
+            The elevation angle in the z-axis. Default is 30.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure containing the 3D visualization of the molecule.
+        """
         pass
 
-    def _create_3d_axis(self, title, figsize=(12, 11)):
+    def _create_3d_axis(self, title, figsize=(8, 5)):
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111, projection='3d')
         return fig, ax
@@ -40,7 +55,7 @@ class BasePlot(ABC):
         ax.legend(
             handles=legend_elements,
             loc='upper right',
-            fontsize=12,  
+            fontsize=8,  
             frameon=True,
             facecolor='white',
             edgecolor='black',
@@ -62,7 +77,7 @@ class BasePlot(ABC):
         # Отображение атомов в виде точек
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, 'grey')
-            ax.scatter(coord[0], coord[1], coord[2], color=color, s=400, edgecolors='k', alpha=0.9)
+            ax.scatter(coord[0], coord[1], coord[2], color=color, s=300, edgecolors='k', alpha=0.9)
 
 
 class SimpleMoleculePlot(BasePlot):
@@ -71,7 +86,7 @@ class SimpleMoleculePlot(BasePlot):
         self._plot_atoms_as_points(ax)
         self._add_legend(ax)
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        # plt.tight_layout()
         return fig
 
 
@@ -102,7 +117,7 @@ class VDWMoleculePlot(BasePlot):
 
         self._add_legend(ax)
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        # plt.tight_layout()
         return fig
 
 
@@ -129,7 +144,7 @@ class HullMoleculePlot(BasePlot):
 
         self._add_legend(ax)
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        # plt.tight_layout()
         return fig
 
 
@@ -177,10 +192,10 @@ class GridHullPlot(BasePlot):
                                           markerfacecolor=color, markersize=14, markeredgecolor='k'))
         legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Grid of points',
                                       markerfacecolor='blue', markersize=10, markeredgecolor='k'))
-        ax.legend(handles=legend_elements, loc='upper right', fontsize=12, frameon=True, facecolor='white', edgecolor='black')
+        ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True, facecolor='white', edgecolor='black')
 
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        # plt.tight_layout()
         return fig
 
 
@@ -231,10 +246,10 @@ class PointsInHullPlot(BasePlot):
                                           markerfacecolor=color, markersize=14, markeredgecolor='k'))
         legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points in ConvexHull',
                                       markerfacecolor='blue', markersize=10, markeredgecolor='k'))
-        ax.legend(handles=legend_elements, loc='upper right', fontsize=12, frameon=True, facecolor='white', edgecolor='black')
+        ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True, facecolor='white', edgecolor='black')
 
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        # plt.tight_layout()
         return fig
 
 
@@ -244,7 +259,7 @@ class PointsInAtomsPlot(BasePlot):
         self.grid_resolution = grid_resolution
 
     def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis("3D visualisation: points inside atoms and cavities")
+        fig, ax = self._create_3d_axis("3D visualisation: points inside atoms and cavities", figsize=(20, 19))
 
         number_of_points = 100000
 
@@ -277,12 +292,12 @@ class PointsInAtomsPlot(BasePlot):
         ax.scatter(points_in_hull[inside_atom, 0],
                    points_in_hull[inside_atom, 1],
                    points_in_hull[inside_atom, 2],
-                   color='green', s=4, alpha=0.2, label='Points inside vdw spheres')
+                   color='green', s=1, alpha=0.2, label='Points inside vdw spheres')
 
         ax.scatter(points_in_hull[~inside_atom, 0],
                    points_in_hull[~inside_atom, 1],
                    points_in_hull[~inside_atom, 2],
-                   color='blue', s=5, alpha=0.7, label='Points in the cavities')
+                   color='blue', s=1, alpha=0.7, label='Points in the cavities')
 
         for atom, coord in zip(self.mol.atoms, self.mol.coords):
             color = self.mol.atom_colors.get(atom, '#808080')
@@ -311,13 +326,13 @@ class PointsInAtomsPlot(BasePlot):
         ax.legend(
             handles=legend_elements,
             loc='upper right',
-            fontsize=12,  
-            frameon=True,
+            fontsize=8,  
+            # frameon=True,
             facecolor='white',
             edgecolor='black',
             markerscale=0.5 
         )
 
         self._style_axis(ax, azim, elev)
-        plt.tight_layout()
+        plt.tight_layout(pad=0.1)
         return fig

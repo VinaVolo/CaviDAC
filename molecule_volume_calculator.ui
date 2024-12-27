@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1333</width>
+    <width>1332</width>
     <height>873</height>
    </rect>
   </property>
@@ -68,7 +68,7 @@
         <x>0</x>
         <y>50</y>
         <width>570</width>
-        <height>91</height>
+        <height>71</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -118,62 +118,74 @@
       </property>
      </widget>
      <widget class="QWidget" name="widget_fig_1" native="true">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>150</y>
+        <y>120</y>
         <width>1141</width>
-        <height>671</height>
+        <height>701</height>
        </rect>
       </property>
-      <widget class="QLabel" name="fig_1_1">
+      <property name="mouseTracking">
+       <bool>false</bool>
+      </property>
+      <property name="autoFillBackground">
+       <bool>false</bool>
+      </property>
+      <widget class="QFrame" name="fig_1_1">
        <property name="geometry">
         <rect>
-         <x>40</x>
-         <y>30</y>
-         <width>461</width>
-         <height>281</height>
+         <x>10</x>
+         <y>0</y>
+         <width>591</width>
+         <height>391</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_1_2">
+      <widget class="QFrame" name="fig_1_3">
        <property name="geometry">
         <rect>
-         <x>620</x>
-         <y>30</y>
-         <width>461</width>
-         <height>281</height>
+         <x>260</x>
+         <y>300</y>
+         <width>591</width>
+         <height>421</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_1_3">
+      <widget class="QFrame" name="fig_1_2">
        <property name="geometry">
         <rect>
-         <x>350</x>
-         <y>360</y>
-         <width>461</width>
-         <height>281</height>
+         <x>530</x>
+         <y>0</y>
+         <width>591</width>
+         <height>401</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
+      <zorder>fig_1_1</zorder>
+      <zorder>fig_1_2</zorder>
+      <zorder>fig_1_3</zorder>
      </widget>
     </widget>
     <widget class="QWidget" name="tab_2">
@@ -199,7 +211,7 @@
         <x>0</x>
         <y>50</y>
         <width>571</width>
-        <height>91</height>
+        <height>81</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -209,9 +221,9 @@
        <property name="geometry">
         <rect>
          <x>210</x>
-         <y>10</y>
+         <y>0</y>
          <width>151</width>
-         <height>16</height>
+         <height>20</height>
         </rect>
        </property>
        <property name="text">
@@ -225,7 +237,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>30</y>
+         <y>20</y>
          <width>421</width>
          <height>51</height>
         </rect>
@@ -239,57 +251,63 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>150</y>
+        <y>130</y>
         <width>571</width>
-        <height>671</height>
+        <height>691</height>
        </rect>
       </property>
-      <widget class="QLabel" name="fig_2_1">
+      <widget class="QFrame" name="fig_2_1">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="geometry">
         <rect>
-         <x>100</x>
-         <y>0</y>
-         <width>371</width>
-         <height>211</height>
+         <x>0</x>
+         <y>180</y>
+         <width>571</width>
+         <height>261</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_2_2">
+      <widget class="QFrame" name="fig_2_2">
        <property name="geometry">
         <rect>
-         <x>100</x>
-         <y>220</y>
-         <width>371</width>
-         <height>221</height>
+         <x>0</x>
+         <y>-10</y>
+         <width>571</width>
+         <height>381</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_2_3">
+      <widget class="QFrame" name="fig_2_3">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="geometry">
         <rect>
-         <x>100</x>
-         <y>450</y>
-         <width>371</width>
-         <height>211</height>
+         <x>0</x>
+         <y>270</y>
+         <width>571</width>
+         <height>531</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
      </widget>
@@ -299,7 +317,7 @@
         <x>590</x>
         <y>50</y>
         <width>561</width>
-        <height>91</height>
+        <height>81</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -309,7 +327,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>32</y>
+         <y>20</y>
          <width>421</width>
          <height>51</height>
         </rect>
@@ -322,7 +340,7 @@
        <property name="geometry">
         <rect>
          <x>200</x>
-         <y>10</y>
+         <y>0</y>
          <width>151</width>
          <height>16</height>
         </rect>
@@ -352,59 +370,68 @@
       <property name="geometry">
        <rect>
         <x>590</x>
-        <y>150</y>
+        <y>130</y>
         <width>561</width>
-        <height>671</height>
+        <height>691</height>
        </rect>
       </property>
-      <widget class="QLabel" name="fig_3_1">
+      <widget class="QFrame" name="fig_3_3">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="geometry">
         <rect>
-         <x>80</x>
-         <y>0</y>
-         <width>371</width>
-         <height>211</height>
+         <x>-10</x>
+         <y>270</y>
+         <width>571</width>
+         <height>531</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_3_2">
+      <widget class="QFrame" name="fig_3_1">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="geometry">
         <rect>
-         <x>80</x>
-         <y>220</y>
-         <width>371</width>
-         <height>221</height>
+         <x>0</x>
+         <y>190</y>
+         <width>571</width>
+         <height>261</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
-      <widget class="QLabel" name="fig_3_3">
+      <widget class="QFrame" name="fig_3_2">
        <property name="geometry">
         <rect>
-         <x>80</x>
-         <y>450</y>
-         <width>371</width>
-         <height>211</height>
+         <x>-10</x>
+         <y>-10</y>
+         <width>571</width>
+         <height>381</height>
         </rect>
        </property>
-       <property name="styleSheet">
-        <string notr="true"/>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
        </property>
-       <property name="text">
-        <string/>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
        </property>
       </widget>
+      <zorder>fig_3_1</zorder>
+      <zorder>fig_3_2</zorder>
+      <zorder>fig_3_3</zorder>
      </widget>
     </widget>
    </widget>
