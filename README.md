@@ -1,6 +1,6 @@
-<h1 align="center" id="title">CalixVolApp</h1>
+<h1 align="center" id="title">InfoVol</h1>
 
-<p id="description">CalixVolApp is an application for calculating the free volume of a molecule</p>
+<p id="description">InfoVol is an application for calculating the free volume of a molecule</p>
 
 <h2>🛠️ Installation Steps:</h2>
 
