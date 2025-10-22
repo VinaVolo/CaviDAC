@@ -1,31 +1,15 @@
 <h1 align="center" id="title">CaviDAC</h1>
 
-<p id="description">Computational prediction of Cavity Volumes in Calixarene Cavitands via Tessellation and Divide-and-Conquer Algorithms</p>
+<p id="description"><h1 align="center" id="title">CaviDAC: computational prediction of cavity volumes in calixarenes via tessellation and divide-and-conquer algorithms</h1>
+</p>
 
 <h2>🛠️ Installation Steps:</h2>
 
-<p>1. Create a virtual environment</p>
+<p>1. Create a virtual environment and install the necessary libraries</p>
 
-For linux/macos system
+For any system
 ```
-python3 -m venv venv
-```
-```
-source venv/bin/activate
-```
-
-For windows system
-```
-python -m venv venv
-```
-```
-venv/Scripts/activate
-```
-
-<p>2. Install the necessary libraries in the environment</p>
-
-```
-pip install -r requirements.txt
+uv sync
 ```
 
 <h2>💻 Built with</h2>
