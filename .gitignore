@@ -145,6 +145,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# slurm
+.slm
+
 # Pyre type checker
 .pyre/
 
