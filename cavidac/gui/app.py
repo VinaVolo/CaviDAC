@@ -7,10 +7,10 @@ import os
 import sys
 from functools import partial
 
+import pyvista as pv
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+from pyvistaqt import QtInteractor
 
 from cavidac.constants import get_data_path
 from cavidac.io.reader import IMoleculeReader, MoleculeFileReader
@@ -111,13 +111,37 @@ QWidget#scrollContent {
 _MAX_MOLECULES = 2
 
 
+def _create_legend_widget(
+    items: list[tuple[str, str]], parent: QtWidgets.QWidget | None = None
+) -> QtWidgets.QWidget:
+    """Create a horizontal legend with colored circles and labels."""
+    widget = QtWidgets.QWidget(parent)
+    layout = QtWidgets.QHBoxLayout(widget)
+    layout.setContentsMargins(8, 4, 8, 4)
+    layout.setSpacing(12)
+    layout.addStretch()
+    for label_text, color in items:
+        dot = QtWidgets.QLabel()
+        dot.setFixedSize(10, 10)
+        dot.setStyleSheet(
+            f"background-color: {color}; border-radius: 5px; border: 1px solid #cccccc;"
+        )
+        layout.addWidget(dot)
+        lbl = QtWidgets.QLabel(label_text)
+        lbl.setStyleSheet("font-size: 11px; color: #555555;")
+        layout.addWidget(lbl)
+    layout.addStretch()
+    return widget
+
+
 class MoleculePanel(QtWidgets.QWidget):
     """A panel displaying results and plots for a single molecule."""
 
     def __init__(self, index: int, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.index = index
-        self._canvases: list[FigureCanvas] = []
+        self._plotters: list[QtInteractor] = []
+        self._legend_widgets: list[QtWidgets.QWidget] = []
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -170,8 +194,7 @@ class MoleculePanel(QtWidgets.QWidget):
             plot_layout.addWidget(label)
 
             container = QtWidgets.QWidget()
-            container.setMinimumHeight(300)
-            container.setMaximumHeight(500)
+            container.setMinimumHeight(250)
             container_layout = QtWidgets.QVBoxLayout(container)
             container_layout.setContentsMargins(0, 0, 0, 0)
             plot_layout.addWidget(container)
@@ -182,7 +205,7 @@ class MoleculePanel(QtWidgets.QWidget):
             if idx < 2:
                 plots_grid.addWidget(plot_card, 0, idx)
             else:
-                plots_grid.addWidget(plot_card, 1, 0, 1, 2, QtCore.Qt.AlignCenter)
+                plots_grid.addWidget(plot_card, 1, 0, 1, 2)
 
         plots_grid.setColumnStretch(0, 1)
         plots_grid.setColumnStretch(1, 1)
@@ -201,26 +224,44 @@ class MoleculePanel(QtWidgets.QWidget):
         )
         self.volume_label.show()
 
-    def set_figures(self, figures: list[Figure]) -> None:
-        for canvas in self._canvases:
-            canvas.setParent(None)
-            canvas.deleteLater()
-        self._canvases.clear()
+    def set_plots(
+        self,
+        plot_callables: list,
+        legends: list[list[tuple[str, str]]] | None = None,
+    ) -> None:
+        """Replace plot widgets with new PyVista interactors.
 
-        for container, figure in zip(self.plot_containers, figures):
+        Each item in plot_callables is a callable that takes a pv.Plotter
+        and populates it with meshes. legends is an optional parallel list of
+        legend items [(label, color), ...] for each plot.
+        """
+        for plotter in self._plotters:
+            plotter.close()
+        self._plotters.clear()
+        for w in self._legend_widgets:
+            w.deleteLater()
+        self._legend_widgets.clear()
+
+        for idx, (container, plot_fn) in enumerate(zip(self.plot_containers, plot_callables)):
             layout = container.layout()
             while layout.count():
                 child = layout.takeAt(0)
                 if child.widget():
+                    child.widget().close()
                     child.widget().deleteLater()
 
-            canvas = FigureCanvas(figure)
-            canvas.setSizePolicy(
-                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-            )
-            layout.addWidget(canvas)
-            canvas.draw()
-            self._canvases.append(canvas)
+            interactor = QtInteractor(container)
+            interactor.set_background("white")
+            plot_fn(interactor)
+            interactor.reset_camera()
+            interactor.camera.zoom(1.4)
+            layout.addWidget(interactor)
+            self._plotters.append(interactor)
+
+            if legends and idx < len(legends) and legends[idx]:
+                legend_w = _create_legend_widget(legends[idx], container)
+                layout.addWidget(legend_w)
+                self._legend_widgets.append(legend_w)
 
         self.plots_widget.show()
 
@@ -235,7 +276,6 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("CaviDAC \u2014 Cavity Volume Calculator")
         self.setMinimumSize(900, 700)
-        self.showMaximized()
 
         self.file_paths: list[str | None] = [None] * _MAX_MOLECULES
         self.calculator = MoleculeVolumeCalculator(reader, vdw_provider, estimator)
@@ -247,6 +287,7 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
             self.vdw_radii: dict[str, float] = json.load(f)
 
         self._build_ui()
+        self.showMaximized()
 
     def _build_ui(self) -> None:
         central = QtWidgets.QWidget()
@@ -307,13 +348,9 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         main_layout.addWidget(toolbar)
 
-        scroll = QtWidgets.QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
-        scroll_content = QtWidgets.QWidget()
-        scroll_content.setObjectName("scrollContent")
-        self.content_layout = QtWidgets.QHBoxLayout(scroll_content)
+        content = QtWidgets.QWidget()
+        content.setObjectName("scrollContent")
+        self.content_layout = QtWidgets.QHBoxLayout(content)
         self.content_layout.setContentsMargins(20, 20, 20, 20)
         self.content_layout.setSpacing(10)
 
@@ -330,8 +367,7 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
             self.panels.append(panel)
             self.content_layout.addWidget(panel)
 
-        scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(content)
 
         self.statusBar().setStyleSheet(
             "font-size: 12px; color: #8e8e93; background-color: #f5f5f7;"
@@ -375,12 +411,28 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
                 panel.set_volumes(hull_vol, atom_vol, cavity_vol)
 
                 mol_data = MoleculeData(atoms, coords, self.atom_colors, self.vdw_radii)
-                figures = [
-                    VDWMoleculePlot(mol_data).plot(azim=360, elev=-64),
-                    HullMoleculePlot(mol_data).plot(azim=360, elev=-64),
-                    PointsInAtomsPlot(mol_data).plot(azim=360, elev=-64),
+
+                vdw_plot = VDWMoleculePlot(mol_data)
+                hull_plot = HullMoleculePlot(mol_data)
+                cavity_plot = PointsInAtomsPlot(mol_data)
+
+                unique_atoms = sorted(mol_data.get_unique_atoms())
+                atom_legend = [
+                    (el, self.atom_colors.get(el, "#808080"))
+                    for el in unique_atoms
                 ]
-                panel.set_figures(figures)
+
+                panel.set_plots(
+                    [vdw_plot.plot, hull_plot.plot, cavity_plot.plot],
+                    legends=[
+                        atom_legend,
+                        atom_legend + [("Convex hull", "#00ffff")],
+                        [
+                            ("Cavity points", "#e74c3c"),
+                            ("Atom points", "#2ecc71"),
+                        ] + atom_legend,
+                    ],
+                )
 
                 self.statusBar().showMessage(
                     f"Molecule {slot + 1}: cavity = {cavity_vol:.2f} \u00c5\u00b3"
@@ -395,11 +447,12 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         self.calc_button.setEnabled(True)
         self.calc_button.setText("Calculate")
+        self.raise_()
+        self.activateWindow()
 
 
 def main() -> None:
-    import matplotlib
-    matplotlib.use("QtAgg")
+    pv.global_theme.multi_rendering_splitting_position = None
 
     app = QtWidgets.QApplication(sys.argv)
     app.setStyleSheet(_STYLE)
