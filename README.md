@@ -21,9 +21,9 @@ CaviDAC/
 │   │   └── volume.py           # ConvexHullVolumeEstimator, MoleculeVolumeCalculator
 │   ├── visualization/
 │   │   ├── molecule_data.py    # MoleculeData container
-│   │   └── plots.py            # 8 Matplotlib 3D plot classes
+│   │   └── plots.py            # PyVista 3D plot classes (VDW, hull, cavity)
 │   └── gui/
-│       └── app.py              # PyQt5 desktop application
+│       └── app.py              # PyQt5 + PyVista desktop application
 ├── data/
 │   ├── molecules/              # Calixarene coordinate files (.txt + .pdb)
 │   └── vdw/                    # Van der Waals radii and element colours (JSON)
@@ -94,10 +94,16 @@ print(f"Cavity volume:      {cavity:.2f} A^3")
 ### GUI
 
 ```bash
-python -m cavidac.gui.app
+uv run python -m cavidac.gui.app
 ```
 
-The main window allows loading up to two molecular coordinate files. Click **Calculate** to compute volumes and render 3D visualizations (VDW spheres, convex hull overlay, cavity point classification).
+The GUI uses PyVista (VTK) for interactive 3D rendering. Load up to two molecular coordinate files and click **Calculate** to compute volumes and render three visualizations:
+
+- **Van der Waals spheres** with atomic bonds
+- **Convex hull** overlay on the molecule
+- **Cavity classification** showing points inside atoms vs. cavity space
+
+All 3D views support interactive rotation, zoom, and pan with the mouse.
 
 ## Input file format
 
@@ -134,13 +140,123 @@ uv run pytest tests/ --cov=cavidac --cov-report=term-missing
 
 ## Dependencies
 
-**Core:** numpy, scipy, matplotlib, PyQt5, tqdm
+**Core:** numpy, scipy, matplotlib, PyQt5, PyVista, pyvistaqt (VTK), tqdm
 
 **Notebooks (optional):** ipykernel, pandas, pykvfinder, pywindowx, pytoml
 
 **Dev (optional):** pytest, pytest-cov
 
 See `pyproject.toml` for version constraints. Requires Python >= 3.13.
+
+## Building standalone executables
+
+CaviDAC can be packaged into a standalone desktop application using [PyInstaller](https://pyinstaller.org/). The resulting binary includes Python, all dependencies, and the `data/` directory — no separate installation required.
+
+### Prerequisites
+
+```bash
+uv pip install pyinstaller
+```
+
+### macOS
+
+```bash
+pyinstaller \
+    --name CaviDAC \
+    --windowed \
+    --onedir \
+    --add-data "data:data" \
+    --hidden-import vtkmodules \
+    --hidden-import vtkmodules.all \
+    --hidden-import pyvistaqt \
+    --collect-all vtkmodules \
+    --collect-all pyvista \
+    cavidac/gui/app.py
+```
+
+The application bundle will be created at `dist/CaviDAC.app`. You can move it to `/Applications/` or distribute it as a `.dmg`.
+
+To create a DMG image:
+
+```bash
+hdiutil create -volname CaviDAC -srcfolder dist/CaviDAC.app -ov -format UDZO dist/CaviDAC.dmg
+```
+
+### Windows
+
+```cmd
+pyinstaller ^
+    --name CaviDAC ^
+    --windowed ^
+    --onedir ^
+    --add-data "data;data" ^
+    --hidden-import vtkmodules ^
+    --hidden-import vtkmodules.all ^
+    --hidden-import pyvistaqt ^
+    --collect-all vtkmodules ^
+    --collect-all pyvista ^
+    cavidac\gui\app.py
+```
+
+The executable will be at `dist\CaviDAC\CaviDAC.exe`. To distribute, archive the `dist\CaviDAC\` folder as a ZIP or create an installer with [NSIS](https://nsis.sourceforge.io/) or [Inno Setup](https://jrsoftware.org/isinfo.php).
+
+> **Note:** On Windows, use `;` (semicolon) as the `--add-data` separator instead of `:` (colon).
+
+### Linux
+
+```bash
+pyinstaller \
+    --name CaviDAC \
+    --windowed \
+    --onedir \
+    --add-data "data:data" \
+    --hidden-import vtkmodules \
+    --hidden-import vtkmodules.all \
+    --hidden-import pyvistaqt \
+    --collect-all vtkmodules \
+    --collect-all pyvista \
+    cavidac/gui/app.py
+```
+
+The binary will be at `dist/CaviDAC/CaviDAC`. To run:
+
+```bash
+./dist/CaviDAC/CaviDAC
+```
+
+For distribution, archive the directory or create an [AppImage](https://appimage.org/):
+
+```bash
+tar -czf CaviDAC-linux-x86_64.tar.gz -C dist CaviDAC
+```
+
+### Troubleshooting
+
+- **Missing VTK modules:** If the app crashes with VTK import errors, add `--collect-all vtk` to the PyInstaller command.
+- **Data files not found:** Ensure `--add-data` paths are correct relative to your working directory. The app locates `data/` relative to the package root.
+- **Large binary size:** VTK adds ~100-200 MB. Use `--onedir` (default above) instead of `--onefile` for faster startup. To reduce size, run `pyinstaller` with `--strip` on Linux/macOS.
+- **macOS code signing:** Unsigned apps trigger Gatekeeper warnings. To sign: `codesign --deep --force --sign - dist/CaviDAC.app`.
+
+## Citation
+
+If you use CaviDAC in your research, please cite our paper:
+
+> Karalash, S. A., Shmurygina, A. V., Krotkov, N. A., Aliev, T. A., Skorb, E. V., & Muravev, A. A. (2026). CaviDAC: Computational Prediction of Cavity Volumes in Calixarenes via Tessellation and Divide-and-Conquer Algorithms. *Advanced Theory and Simulations*, *9*(2), e01444.
+
+BibTeX:
+
+```bibtex
+@article{karalash2026cavidac,
+  title={CaviDAC: Computational Prediction of Cavity Volumes in Calixarenes via Tessellation and Divide-and-Conquer Algorithms},
+  author={Karalash, Sergei A and Shmurygina, Anna V and Krotkov, Nikita A and Aliev, Timur A and Skorb, Ekaterina V and Muravev, Anton A},
+  journal={Advanced Theory and Simulations},
+  volume={9},
+  number={2},
+  pages={e01444},
+  year={2026},
+  publisher={Wiley Online Library}
+}
+```
 
 ## Contributing
 
