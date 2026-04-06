@@ -10,22 +10,26 @@ CaviDAC estimates internal cavity volumes of calixarene molecules by constructin
 
 ```
 CaviDAC/
-├── CalixVolApp/
-│   ├── calculation/
-│   │   ├── spatial.py          # Shared spatial classification (Delaunay + cKDTree)
-│   │   ├── calculation.py      # Volume estimation interfaces and implementations
-│   │   └── visualization.py    # 8 Matplotlib 3D plot classes
-│   ├── data/
-│   │   ├── molecules/          # 15 calixarene coordinate files (.txt + .pdb)
-│   │   └── vdw/                # Van der Waals radii and element colours (JSON)
-│   ├── GUI/
-│   │   └── app.py              # PyQt5 desktop application
-│   └── utils/
-│       └── paths.py            # Project root path helper
+├── cavidac/                    # Python package
+│   ├── __init__.py             # Public API
+│   ├── constants.py            # Shared constants and path helpers
+│   ├── io/
+│   │   ├── reader.py           # IMoleculeReader, MoleculeFileReader
+│   │   └── vdw_provider.py     # IVDWRadiusProvider, JsonVDWRadiusProvider
+│   ├── geometry/
+│   │   ├── spatial.py          # Delaunay + cKDTree point classification
+│   │   └── volume.py           # ConvexHullVolumeEstimator, MoleculeVolumeCalculator
+│   ├── visualization/
+│   │   ├── molecule_data.py    # MoleculeData container
+│   │   └── plots.py            # 8 Matplotlib 3D plot classes
+│   └── gui/
+│       └── app.py              # PyQt5 desktop application
+├── data/
+│   ├── molecules/              # Calixarene coordinate files (.txt + .pdb)
+│   └── vdw/                    # Van der Waals radii and element colours (JSON)
 ├── notebooks/                  # Jupyter notebooks for benchmarking and visualization
 ├── results/                    # Pre-computed volumes (CaviDAC, pyKVFinder, PyWindow)
 ├── tests/                      # pytest test suite
-├── molecule_volume_calculator.ui  # Qt Designer UI file
 └── pyproject.toml
 ```
 
@@ -64,24 +68,24 @@ uv sync --extra dev
 ### Command-line
 
 ```python
-from CalixVolApp.calculation.calculation import (
+from cavidac import (
     MoleculeFileReader,
     JsonVDWRadiusProvider,
     ConvexHullVolumeEstimator,
     MoleculeVolumeCalculator,
 )
-from CalixVolApp.utils.paths import get_project_path
+from cavidac.constants import get_data_path
 
-proj = get_project_path()
-vdw_file = proj / "CalixVolApp" / "data" / "vdw" / "vdw_radius.json"
-mol_file = proj / "CalixVolApp" / "data" / "molecules" / "txt_calix" / "1.txt"
+data = get_data_path()
+vdw_file = str(data / "vdw" / "vdw_radius.json")
+mol_file = str(data / "molecules" / "txt_calix" / "1.txt")
 
 reader = MoleculeFileReader()
-vdw_provider = JsonVDWRadiusProvider(str(vdw_file))
+vdw_provider = JsonVDWRadiusProvider(vdw_file)
 estimator = ConvexHullVolumeEstimator()
 calculator = MoleculeVolumeCalculator(reader, vdw_provider, estimator)
 
-total, atoms, cavity = calculator.calculate(str(mol_file), grid_resolution=0.1)
+total, atoms, cavity = calculator.calculate(mol_file, grid_resolution=0.1)
 print(f"Convex hull volume: {total:.2f} A^3")
 print(f"Atomic volume:      {atoms:.2f} A^3")
 print(f"Cavity volume:      {cavity:.2f} A^3")
@@ -90,10 +94,10 @@ print(f"Cavity volume:      {cavity:.2f} A^3")
 ### GUI
 
 ```bash
-python -m CalixVolApp.GUI.app
+python -m cavidac.gui.app
 ```
 
-The main window allows loading up to three molecular coordinate files. Click **Calculate** to compute volumes and render 3D visualizations (VDW spheres, convex hull overlay, cavity point classification).
+The main window allows loading up to two molecular coordinate files. Click **Calculate** to compute volumes and render 3D visualizations (VDW spheres, convex hull overlay, cavity point classification).
 
 ## Input file format
 
@@ -105,7 +109,7 @@ O  6.32204  5.93875  1.28402
 H  5.88298  4.68061  2.26094
 ```
 
-Blank lines are skipped. Lines with fewer than 4 columns raise a `ValueError` with the line number. See `CalixVolApp/data/molecules/` for examples.
+Blank lines are skipped. Lines with fewer than 4 columns raise a `ValueError` with the line number. See `data/molecules/` for examples.
 
 ## Testing
 
@@ -116,7 +120,7 @@ uv run pytest tests/ -v
 With coverage:
 
 ```bash
-uv run pytest tests/ --cov=CalixVolApp --cov-report=term-missing
+uv run pytest tests/ --cov=cavidac --cov-report=term-missing
 ```
 
 ## Notebooks
@@ -140,7 +144,7 @@ See `pyproject.toml` for version constraints. Requires Python >= 3.13.
 
 ## Contributing
 
-Contributions are welcome. When adding new functionality or fixing bugs, please include tests and adhere to the existing code style. New molecules can be added as `.txt` files in `CalixVolApp/data/molecules/txt_calix/`. Van der Waals parameters can be edited in the JSON files under `CalixVolApp/data/vdw/`.
+Contributions are welcome. When adding new functionality or fixing bugs, please include tests and adhere to the existing code style. New molecules can be added as `.txt` files in `data/molecules/txt_calix/`. Van der Waals parameters can be edited in the JSON files under `data/vdw/`.
 
 ## License
 

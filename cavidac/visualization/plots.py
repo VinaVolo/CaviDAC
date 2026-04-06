@@ -14,38 +14,14 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from abc import ABC, abstractmethod
 from scipy.spatial import ConvexHull, Delaunay, cKDTree
 
-from CalixVolApp.calculation.spatial import (
+from cavidac.constants import (
     DEFAULT_VDW_RADIUS,
     MAX_BOND_DISTANCE,
     SPHERE_U_RESOLUTION,
     SPHERE_V_RESOLUTION,
-    classify_points,
 )
-
-
-class MoleculeData:
-    """Immutable container for molecule visualization data."""
-
-    __slots__ = ("atoms", "coords", "atom_colors", "vdw_radii")
-
-    def __init__(
-        self,
-        atoms: list[str],
-        coords: np.ndarray,
-        atom_colors: dict[str, str],
-        vdw_radii: dict[str, float],
-    ) -> None:
-        self.atoms = atoms
-        self.coords = coords
-        self.atom_colors = atom_colors
-        self.vdw_radii = vdw_radii
-
-    def get_unique_atoms(self) -> set[str]:
-        return set(self.atoms)
-
-    def get_radii_array(self) -> np.ndarray:
-        """Return (N,) array of VDW radii for each atom."""
-        return np.array([self.vdw_radii.get(a, DEFAULT_VDW_RADIUS) for a in self.atoms])
+from cavidac.geometry.spatial import classify_points
+from cavidac.visualization.molecule_data import MoleculeData
 
 
 class BasePlot(ABC):
@@ -162,8 +138,6 @@ class BasePlot(ABC):
         ax.xaxis.pane.set_edgecolor("w")
         ax.yaxis.pane.set_edgecolor("w")
         ax.zaxis.pane.set_edgecolor("w")
-
-        # Zoom camera closer to molecule (default dist=10)
         ax.dist = 6
 
 

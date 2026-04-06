@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from CalixVolApp.calculation.spatial import (
+from cavidac.geometry.spatial import (
     SpatialClassification,
     _classify_inside_atoms,
     classify_grid_points,

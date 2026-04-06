@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from CalixVolApp.calculation.calculation import JsonVDWRadiusProvider
-from CalixVolApp.calculation.spatial import DEFAULT_VDW_RADIUS
+from cavidac.io.vdw_provider import JsonVDWRadiusProvider
+from cavidac.constants import DEFAULT_VDW_RADIUS
 
 
 class TestJsonVDWRadiusProvider:

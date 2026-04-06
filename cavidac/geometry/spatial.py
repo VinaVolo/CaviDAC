@@ -11,11 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay, cKDTree
 
-DEFAULT_VDW_RADIUS: float = 1.5
-DEFAULT_GRID_RESOLUTION: float = 0.1
-MAX_BOND_DISTANCE: float = 2.0
-SPHERE_U_RESOLUTION: int = 30
-SPHERE_V_RESOLUTION: int = 15
+from cavidac.constants import DEFAULT_GRID_RESOLUTION, DEFAULT_VDW_RADIUS
 
 
 def _classify_inside_atoms(
@@ -27,17 +23,6 @@ def _classify_inside_atoms(
     """Determine which points lie inside any atom's VDW sphere.
 
     Uses vectorized distance computation per neighbor batch for performance.
-
-    Parameters
-    ----------
-    points : np.ndarray
-        (M, 3) array of query points.
-    coords : np.ndarray
-        (N, 3) array of atomic coordinates.
-    vdw_radii : np.ndarray
-        (N,) array of van der Waals radii.
-    max_radius : float
-        Maximum VDW radius (for KDTree query range).
 
     Returns
     -------
@@ -62,17 +47,7 @@ def _classify_inside_atoms(
 
 @dataclass(frozen=True)
 class SpatialClassification:
-    """Result of classifying random points relative to a molecular convex hull.
-
-    Attributes
-    ----------
-    hull : ConvexHull
-        The convex hull of the atomic coordinates.
-    points_in_hull : np.ndarray
-        (M, 3) array of points that lie inside the convex hull.
-    inside_atoms_mask : np.ndarray
-        Boolean mask of length M — True where point is inside a VDW sphere.
-    """
+    """Result of classifying random points relative to a molecular convex hull."""
 
     hull: ConvexHull
     points_in_hull: np.ndarray
@@ -84,22 +59,7 @@ def classify_points(
     vdw_radii: np.ndarray,
     num_points: int = 100_000,
 ) -> SpatialClassification:
-    """Classify random points as inside atoms or in cavities.
-
-    Parameters
-    ----------
-    coords : np.ndarray
-        (N, 3) array of atomic coordinates.
-    vdw_radii : np.ndarray
-        (N,) array of van der Waals radii for each atom.
-    num_points : int
-        Number of random points to sample in the bounding box.
-
-    Returns
-    -------
-    SpatialClassification
-        Frozen dataclass with hull, points inside hull, and classification mask.
-    """
+    """Classify random points as inside atoms or in cavities."""
     hull = ConvexHull(coords)
     hull_points = coords[hull.vertices]
 
@@ -128,15 +88,6 @@ def classify_grid_points(
     grid_resolution: float = DEFAULT_GRID_RESOLUTION,
 ) -> tuple[float, float, float]:
     """Classify uniform grid points for precise volume estimation.
-
-    Parameters
-    ----------
-    coords : np.ndarray
-        (N, 3) array of atomic coordinates.
-    vdw_radii : np.ndarray
-        (N,) array of van der Waals radii for each atom.
-    grid_resolution : float
-        Spacing of the uniform 3D grid.
 
     Returns
     -------

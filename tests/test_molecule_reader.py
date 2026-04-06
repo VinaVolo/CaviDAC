@@ -8,7 +8,7 @@ import tempfile
 import numpy as np
 import pytest
 
-from CalixVolApp.calculation.calculation import MoleculeFileReader
+from cavidac.io.reader import MoleculeFileReader
 
 
 class TestMoleculeFileReader:

@@ -1,6 +1,6 @@
 [project]
 name = "cavidac"
-version = "0.1.0"
+version = "0.2.0"
 description = "Computational prediction of cavity volumes in calixarene molecules using tessellation and divide-and-conquer algorithms"
 readme = "README.md"
 requires-python = ">=3.13"

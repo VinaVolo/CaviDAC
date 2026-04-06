@@ -9,28 +9,28 @@ import tempfile
 import numpy as np
 import pytest
 
-from CalixVolApp.utils.paths import get_project_path
+from cavidac.constants import get_data_path
 
 
 @pytest.fixture
-def project_path() -> str:
-    return str(get_project_path())
+def data_path() -> str:
+    return str(get_data_path())
 
 
 @pytest.fixture
-def sample_molecule_file(project_path: str) -> str:
+def sample_molecule_file(data_path: str) -> str:
     """Path to molecule 1 (smallest test file)."""
-    return os.path.join(project_path, "CalixVolApp", "data", "molecules", "txt_calix", "1.txt")
+    return os.path.join(data_path, "molecules", "txt_calix", "1.txt")
 
 
 @pytest.fixture
-def vdw_radius_file(project_path: str) -> str:
-    return os.path.join(project_path, "CalixVolApp", "data", "vdw", "vdw_radius.json")
+def vdw_radius_file(data_path: str) -> str:
+    return os.path.join(data_path, "vdw", "vdw_radius.json")
 
 
 @pytest.fixture
-def vdw_colors_file(project_path: str) -> str:
-    return os.path.join(project_path, "CalixVolApp", "data", "vdw", "vdw_colors.json")
+def vdw_colors_file(data_path: str) -> str:
+    return os.path.join(data_path, "vdw", "vdw_colors.json")
 
 
 @pytest.fixture

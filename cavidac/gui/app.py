@@ -6,29 +6,26 @@ import json
 import os
 import sys
 from functools import partial
-from typing import NamedTuple
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-from CalixVolApp.calculation.calculation import (
+from cavidac.constants import get_data_path
+from cavidac.io.reader import IMoleculeReader, MoleculeFileReader
+from cavidac.io.vdw_provider import IVDWRadiusProvider, JsonVDWRadiusProvider
+from cavidac.geometry.volume import (
     ConvexHullVolumeEstimator,
-    IMoleculeReader,
-    IVDWRadiusProvider,
     IVolumeEstimator,
-    JsonVDWRadiusProvider,
-    MoleculeFileReader,
     MoleculeVolumeCalculator,
 )
-from CalixVolApp.calculation.visualization import (
+from cavidac.visualization.molecule_data import MoleculeData
+from cavidac.visualization.plots import (
     HullMoleculePlot,
-    MoleculeData,
     PointsInAtomsPlot,
     VDWMoleculePlot,
 )
-from CalixVolApp.utils.paths import get_project_path
 
 _STYLE = """
 QMainWindow {
@@ -128,7 +125,6 @@ class MoleculePanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
 
-        # --- Result card ---
         result_card = QtWidgets.QWidget()
         result_card.setObjectName("resultCard")
         card_layout = QtWidgets.QVBoxLayout(result_card)
@@ -152,7 +148,6 @@ class MoleculePanel(QtWidgets.QWidget):
 
         layout.addWidget(result_card)
 
-        # --- Plot area: 2 on top + 1 centered below ---
         self.plot_titles = ["Van der Waals spheres", "Convex hull", "Cavity classification"]
         self.plot_containers: list[QtWidgets.QWidget] = []
         self.plot_cards: list[QtWidgets.QWidget] = []
@@ -185,13 +180,10 @@ class MoleculePanel(QtWidgets.QWidget):
             self.plot_cards.append(plot_card)
 
             if idx < 2:
-                # Top row: 2 plots side by side
                 plots_grid.addWidget(plot_card, 0, idx)
             else:
-                # Bottom row: centered, spanning both columns
                 plots_grid.addWidget(plot_card, 1, 0, 1, 2, QtCore.Qt.AlignCenter)
 
-        # Make both columns equal width
         plots_grid.setColumnStretch(0, 1)
         plots_grid.setColumnStretch(1, 1)
 
@@ -248,15 +240,10 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
         self.file_paths: list[str | None] = [None] * _MAX_MOLECULES
         self.calculator = MoleculeVolumeCalculator(reader, vdw_provider, estimator)
 
-        colors_path = os.path.join(
-            get_project_path(), "CalixVolApp", "data", "vdw", "vdw_colors.json"
-        )
-        radii_path = os.path.join(
-            get_project_path(), "CalixVolApp", "data", "vdw", "vdw_radius.json"
-        )
-        with open(colors_path, "r") as f:
+        data_path = get_data_path()
+        with open(data_path / "vdw" / "vdw_colors.json", "r") as f:
             self.atom_colors: dict[str, str] = json.load(f)
-        with open(radii_path, "r") as f:
+        with open(data_path / "vdw" / "vdw_radius.json", "r") as f:
             self.vdw_radii: dict[str, float] = json.load(f)
 
         self._build_ui()
@@ -268,7 +255,6 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # --- Toolbar ---
         toolbar = QtWidgets.QWidget()
         toolbar.setObjectName("toolbar")
         toolbar.setFixedHeight(64)
@@ -321,7 +307,6 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
 
         main_layout.addWidget(toolbar)
 
-        # --- Content area with scroll ---
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
@@ -348,7 +333,6 @@ class AppVolumeCalculator(QtWidgets.QMainWindow):
         scroll.setWidget(scroll_content)
         main_layout.addWidget(scroll)
 
-        # --- Status bar ---
         self.statusBar().setStyleSheet(
             "font-size: 12px; color: #8e8e93; background-color: #f5f5f7;"
         )
@@ -420,9 +404,7 @@ def main() -> None:
     app = QtWidgets.QApplication(sys.argv)
     app.setStyleSheet(_STYLE)
 
-    vdw_file = os.path.join(
-        get_project_path(), "CalixVolApp", "data", "vdw", "vdw_radius.json"
-    )
+    vdw_file = str(get_data_path() / "vdw" / "vdw_radius.json")
     reader = MoleculeFileReader()
     vdw_provider = JsonVDWRadiusProvider(vdw_file)
     estimator = ConvexHullVolumeEstimator()

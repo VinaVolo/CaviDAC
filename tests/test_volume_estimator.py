@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from CalixVolApp.calculation.calculation import (
+from cavidac.geometry.volume import (
     ConvexHullVolumeEstimator,
-    JsonVDWRadiusProvider,
-    MoleculeFileReader,
     MoleculeVolumeCalculator,
 )
+from cavidac.io.reader import MoleculeFileReader
+from cavidac.io.vdw_provider import JsonVDWRadiusProvider
 
 
 class TestConvexHullVolumeEstimator:
