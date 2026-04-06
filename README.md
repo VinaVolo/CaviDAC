@@ -1,92 +1,147 @@
-# CaviDAC: computational prediction of cavity volumes in calixarenes via tessellation and divide-and-conquer algorithms
+# CaviDAC
 
-## Features
+Computational prediction of cavity volumes in calixarenes via tessellation and divide-and-conquer algorithms.
 
-- **Volume estimation:**  The core of CaviDAC is implemented in `CalixVolApp/calculation/calculation.py`.  It defines abstract interfaces for reading molecular coordinates (`IMoleculeReader`), retrieving van der Waals radii (`IVDWRadiusProvider`) and estimating volumes (`IVolumeEstimator`).  A concrete `MoleculeFileReader` parses coordinate files where each line contains an element symbol and three Cartesian coordinates; if the file does not exist it raises a `FileNotFoundError`.  A `JsonVDWRadiusProvider` reads van der Waals radii from a JSON file, and `ConvexHullVolumeEstimator` computes the convex hull of the atoms, constructs a grid of points covering the hull, classifies grid points as inside or outside atoms using a KD‑tree and returns the total, atomic and cavity volumes.
+## Overview
 
-- **Divide‑and‑conquer algorithm:**  The `ConvexHullVolumeEstimator` builds a Delaunay triangulation of the hull and checks grid points to see whether they lie inside the hull and within any atom’s van der Waals radius.  The grid resolution is configurable; a smaller spacing yields a more accurate but slower estimation.  The difference between the hull volume and the sum of grid points inside atoms estimates the cavity volume.
+CaviDAC estimates internal cavity volumes of calixarene molecules by constructing a convex hull around atomic coordinates, sampling a 3D grid of points inside the hull, and classifying each point as belonging to an atom (within its van der Waals radius) or to the cavity. The difference between the hull volume and the volume occupied by atoms gives the cavity volume.
 
-- **3‑D visualisation:**  The module `CalixVolApp/calculation/visualization.py` contains several classes that use Matplotlib to display molecules:
-  - `SimpleMoleculePlot` shows atoms as coloured points with an element‑specific legend.
-  - `VDWMoleculePlot` draws each atom as a sphere scaled to its van der Waals radius and connects atoms that are closer than 2 Å.
-  - `HullMoleculePlot` overlays the convex hull surface on the atomic spheres.
-  - `GridHullPlot`, `PointsInHullPlot` and `PointsInAtomsPlot` illustrate random grids of points, points inside the hull and points classified inside atoms versus cavities.
+## Project structure
 
-- **PyQt5 GUI:**  The GUI in `CalixVolApp/GUI/app.py` loads a Qt Designer `.ui` file and wires up buttons to load up to three molecules and compute their volumes.  It constructs an `AppVolumeCalculator` window which accepts a molecule reader, van der Waals provider and volume estimator.  When the user clicks the **Calculate** button, the GUI reads atom colours and radii from JSON files, computes the hull, atomic and cavity volumes for each loaded file and displays the results.  It then renders three Matplotlib plots for each molecule (van der Waals spheres, convex hull surface and points‑in‑atoms view).
+```
+CaviDAC/
+├── CalixVolApp/
+│   ├── calculation/
+│   │   ├── spatial.py          # Shared spatial classification (Delaunay + cKDTree)
+│   │   ├── calculation.py      # Volume estimation interfaces and implementations
+│   │   └── visualization.py    # 8 Matplotlib 3D plot classes
+│   ├── data/
+│   │   ├── molecules/          # 15 calixarene coordinate files (.txt + .pdb)
+│   │   └── vdw/                # Van der Waals radii and element colours (JSON)
+│   ├── GUI/
+│   │   └── app.py              # PyQt5 desktop application
+│   └── utils/
+│       └── paths.py            # Project root path helper
+├── notebooks/                  # Jupyter notebooks for benchmarking and visualization
+├── results/                    # Pre-computed volumes (CaviDAC, pyKVFinder, PyWindow)
+├── tests/                      # pytest test suite
+├── molecule_volume_calculator.ui  # Qt Designer UI file
+└── pyproject.toml
+```
 
-- **Sample data:**  The `CalixVolApp/data` directory stores van der Waals radii (`vdw_radius.json`) and colour definitions (`vdw_colors.json`) for elements.  For example, the JSON defines colours for common elements such as hydrogen ("H": "#FFFFFF"), carbon ("C": "#555555") and oxygen ("O": "#FF0D0D") and van der Waals radii such as 1.2 Å for hydrogen, 1.70 Å for carbon and 1.52 Å for oxygen.  The `molecules` sub‑folder contains coordinate files in both `.txt` and `.pdb` formats; each `.txt` line lists an element followed by its (x,y,z) coordinates, e.g. “O 5.68628 3.77511 2.61536”.
+## Algorithm
 
-- **Jupyter notebooks:**  The `notebooks` directory includes notebooks (`results_cavidac.ipynb`, `results_kvfinder.ipynb`, `results_pywindow.ipynb`, `visualization.ipynb`) that reproduce calculations, compare CaviDAC with other cavity–volume tools such as pyKVFinder and PyWindow, and demonstrate plotting routines.
+1. Compute the **ConvexHull** of atomic coordinates (scipy).
+2. Build a **Delaunay triangulation** of hull vertices to classify grid points as inside/outside the hull.
+3. Construct a **uniform 3D grid** covering the hull bounding box (spacing = `grid_resolution`).
+4. For each grid point inside the hull, query a **cKDTree** to find nearby atoms and check whether the point falls within any atom's van der Waals radius.
+5. **Cavity volume** = hull volume - (count of points inside atoms x grid_resolution^3).
 
-- **Results and benchmarks:**  Pre‑computed results are stored in `results/`.  For example, `results/CaviDAC/calc_volumes_cavidac.csv` lists cavity volumes for calixarene molecules at grid resolution 0.1; molecule 2 has a cavity volume of ≈116.4 Å³ and molecule 3 has ≈81.5 Å³.  Additional subdirectories `pyKVFinder` and `pywindow` contain volumes computed with those external packages for comparison.  An `exp_with_grid_res` folder explores how cavity volume depends on grid resolution.
+The `grid_resolution` parameter controls accuracy vs. speed: smaller values yield more precise estimates at the cost of longer computation times.
 
 ## Installation
 
-1. **Clone the repository**
+```bash
+git clone https://github.com/VinaVolo/CaviDAC.git
+cd CaviDAC
+uv sync
+```
 
-   ```bash
-   git clone https://github.com/VinaVolo/CaviDAC.git
-   cd CaviDAC
+To install optional dependencies for Jupyter notebooks (pyKVFinder, PyWindow comparison):
 
-2. **Set up a virtual environment and install dependencies**
+```bash
+uv sync --extra notebooks
+```
 
-    ```bash
-    uv sync
+To install development dependencies (pytest, coverage):
 
+```bash
+uv sync --extra dev
+```
 
 ## Usage
 
-### Command‑line example
+### Command-line
 
-You can compute the cavity volume of a molecule without the GUI by instantiating the provided classes:
+```python
+from CalixVolApp.calculation.calculation import (
+    MoleculeFileReader,
+    JsonVDWRadiusProvider,
+    ConvexHullVolumeEstimator,
+    MoleculeVolumeCalculator,
+)
+from CalixVolApp.utils.paths import get_project_path
 
-    from CalixVolApp.calculation.calculation import MoleculeFileReader, JsonVDWRadiusProvider, ConvexHullVolumeEstimator, MoleculeVolumeCalculator
-    from CalixVolApp.utils.paths import get_project_path
+proj = get_project_path()
+vdw_file = proj / "CalixVolApp" / "data" / "vdw" / "vdw_radius.json"
+mol_file = proj / "CalixVolApp" / "data" / "molecules" / "txt_calix" / "1.txt"
 
-    # paths to data
-    proj = get_project_path()
-    vdw_file = proj / "CalixVolApp" / "data" / "vdw" / "vdw_radius.json"
-    mol_file = proj / "CalixVolApp" / "data" / "molecules" / "txt_calix" / "1.txt"
+reader = MoleculeFileReader()
+vdw_provider = JsonVDWRadiusProvider(str(vdw_file))
+estimator = ConvexHullVolumeEstimator()
+calculator = MoleculeVolumeCalculator(reader, vdw_provider, estimator)
 
-    # create objects
-    reader = MoleculeFileReader()
-    vdw_provider = JsonVDWRadiusProvider(str(vdw_file))
-    estimator = ConvexHullVolumeEstimator()
-    calculator = MoleculeVolumeCalculator(reader, vdw_provider, estimator)
+total, atoms, cavity = calculator.calculate(str(mol_file), grid_resolution=0.1)
+print(f"Convex hull volume: {total:.2f} A^3")
+print(f"Atomic volume:      {atoms:.2f} A^3")
+print(f"Cavity volume:      {cavity:.2f} A^3")
+```
 
-    # calculate volumes
-    hull, atoms, cavity = calculator.calculate(str(mol_file), grid_resolution=0.1)
-    print(f"Convex hull volume: {hull:.2f} Å³")
-    print(f"Atomic volume: {atoms:.2f} Å³")
-    print(f"Cavity volume: {cavity:.2f} Å³")
+### GUI
 
+```bash
+python -m CalixVolApp.GUI.app
+```
 
-  The grid_resolution parameter controls the spacing of the sampling grid: smaller values give more accurate results at the expense of runtime.
-
-## Launching the GUI
-
-  From the repository root, run the application:
-  ```bash
-  python CalixVolApp/GUI/app.py
-  ```
-The main window allows you to load up to three molecular coordinate files. When you click Calculate, CaviDAC loads element colours and radii from the JSON files, computes the volumes and displays the results in the interface
+The main window allows loading up to three molecular coordinate files. Click **Calculate** to compute volumes and render 3D visualizations (VDW spheres, convex hull overlay, cavity point classification).
 
 ## Input file format
 
-Molecule files are plain text; each line contains an element symbol followed by its (x,y,z) Cartesian coordinates in Ångströms:
+Plain text, one atom per line: element symbol followed by Cartesian coordinates in Angstroms.
+
+```
+O  5.68628  3.77511  2.61536
+O  6.32204  5.93875  1.28402
+H  5.88298  4.68061  2.26094
+```
+
+Blank lines are skipped. Lines with fewer than 4 columns raise a `ValueError` with the line number. See `CalixVolApp/data/molecules/` for examples.
+
+## Testing
 
 ```bash
-O 5.68628 3.77511 2.61536
-O 6.32204 5.93875 1.28402
-O 5.72621 4.69752 -0.93629
-…
+uv run pytest tests/ -v
 ```
-Lines beginning with whitespace are tolerated; blank lines are ignored by the reader. See the CalixVolApp/data/molecules folder for examples.
+
+With coverage:
+
+```bash
+uv run pytest tests/ --cov=CalixVolApp --cov-report=term-missing
+```
+
+## Notebooks
+
+| Notebook | Purpose |
+|---|---|
+| `results_cavidac.ipynb` | Grid resolution sweep and volume computation for all 14 molecules |
+| `results_kvfinder.ipynb` | Comparison with pyKVFinder |
+| `results_pywindow.ipynb` | Comparison with PyWindow |
+| `visualization.ipynb` | Demonstration of all visualization classes |
+
+## Dependencies
+
+**Core:** numpy, scipy, matplotlib, PyQt5, tqdm
+
+**Notebooks (optional):** ipykernel, pandas, pykvfinder, pywindowx, pytoml
+
+**Dev (optional):** pytest, pytest-cov
+
+See `pyproject.toml` for version constraints. Requires Python >= 3.13.
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests. When adding new functionality or fixing bugs, please include docstrings and adhere to the existing code style. Adding new molecules or van der Waals parameters can be done by editing the JSON files in CalixVolApp/data/vdw.
+Contributions are welcome. When adding new functionality or fixing bugs, please include tests and adhere to the existing code style. New molecules can be added as `.txt` files in `CalixVolApp/data/molecules/txt_calix/`. Van der Waals parameters can be edited in the JSON files under `CalixVolApp/data/vdw/`.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License. See [LICENSE](LICENSE) for details.

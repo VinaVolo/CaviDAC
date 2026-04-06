@@ -1,165 +1,210 @@
+"""3D molecular visualization using Matplotlib.
+
+Provides multiple plot types for rendering molecules with van der Waals spheres,
+convex hulls, and cavity point classifications.
+"""
+
+from __future__ import annotations
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.spatial import ConvexHull, Delaunay, cKDTree
-from abc import ABC, abstractmethod
 from matplotlib.patches import Patch
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from abc import ABC, abstractmethod
+from scipy.spatial import ConvexHull, Delaunay, cKDTree
+
+from CalixVolApp.calculation.spatial import (
+    DEFAULT_VDW_RADIUS,
+    MAX_BOND_DISTANCE,
+    SPHERE_U_RESOLUTION,
+    SPHERE_V_RESOLUTION,
+    classify_points,
+)
 
 
 class MoleculeData:
-    def __init__(self, atoms, coords, atom_colors, vdw_radii):
+    """Immutable container for molecule visualization data."""
+
+    __slots__ = ("atoms", "coords", "atom_colors", "vdw_radii")
+
+    def __init__(
+        self,
+        atoms: list[str],
+        coords: np.ndarray,
+        atom_colors: dict[str, str],
+        vdw_radii: dict[str, float],
+    ) -> None:
         self.atoms = atoms
         self.coords = coords
         self.atom_colors = atom_colors
         self.vdw_radii = vdw_radii
 
-    def get_unique_atoms(self):
+    def get_unique_atoms(self) -> set[str]:
         return set(self.atoms)
+
+    def get_radii_array(self) -> np.ndarray:
+        """Return (N,) array of VDW radii for each atom."""
+        return np.array([self.vdw_radii.get(a, DEFAULT_VDW_RADIUS) for a in self.atoms])
 
 
 class BasePlot(ABC):
-    def __init__(self, molecule_data: MoleculeData):
+    def __init__(self, molecule_data: MoleculeData) -> None:
         self.mol = molecule_data
 
     @abstractmethod
-    def plot(self, azim=45, elev=30):
-        """
-        Create a 3D visualization of the molecule.
-
-        Parameters
-        ----------
-        azim : float, optional
-            The azimuthal angle in the x-y plane. Default is 45.
-        elev : float, optional
-            The elevation angle in the z-axis. Default is 30.
-
-        Returns
-        -------
-        fig : matplotlib.figure.Figure
-            The figure containing the 3D visualization of the molecule.
-        """
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        """Create a 3D visualization of the molecule."""
         pass
 
-    def _create_3d_axis(self, title, figsize=(8, 5)):
+    def _create_3d_axis(
+        self, figsize: tuple[float, float] = (6, 5)
+    ) -> tuple[plt.Figure, plt.Axes]:
         fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         return fig, ax
 
-    def _add_legend(self, ax):
+    def _plot_atoms_as_points(self, ax: plt.Axes) -> None:
+        for atom, coord in zip(self.mol.atoms, self.mol.coords):
+            color = self.mol.atom_colors.get(atom, "grey")
+            ax.scatter(coord[0], coord[1], coord[2], color=color, s=300, edgecolors="k", alpha=0.9)
+
+    def _plot_vdw_spheres(
+        self,
+        ax: plt.Axes,
+        alpha: float = 0.8,
+        u_res: int = SPHERE_U_RESOLUTION,
+        v_res: int = SPHERE_V_RESOLUTION,
+        linewidth: float = 0,
+    ) -> None:
+        """Render atoms as VDW spheres on the given 3D axis."""
+        u_grid = complex(0, u_res)
+        v_grid = complex(0, v_res)
+        for atom, coord in zip(self.mol.atoms, self.mol.coords):
+            color = self.mol.atom_colors.get(atom, "#808080")
+            radius = self.mol.vdw_radii.get(atom, DEFAULT_VDW_RADIUS)
+            u, v = np.mgrid[0 : 2 * np.pi : u_grid, 0 : np.pi : v_grid]
+            x = radius * np.cos(u) * np.sin(v) + coord[0]
+            y = radius * np.sin(u) * np.sin(v) + coord[1]
+            z = radius * np.cos(v) + coord[2]
+            ax.plot_surface(x, y, z, color=color, linewidth=linewidth, antialiased=True, shade=True, alpha=alpha)
+
+    def _plot_hull_surface(
+        self,
+        ax: plt.Axes,
+        color: str = "cyan",
+        alpha: float = 0.5,
+        linewidth: float = 0,
+    ) -> ConvexHull:
+        """Render convex hull triangles and return the hull object."""
+        hull = ConvexHull(self.mol.coords)
+        for simplex in hull.simplices:
+            triangle = self.mol.coords[simplex]
+            ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2],
+                            color=color, alpha=alpha, linewidth=linewidth)
+        return hull
+
+    def _plot_bonds(self, ax: plt.Axes) -> None:
+        """Draw bonds between atoms closer than MAX_BOND_DISTANCE."""
+        tree = cKDTree(self.mol.coords)
+        pairs = tree.query_pairs(MAX_BOND_DISTANCE)
+        for i, j in pairs:
+            ax.plot(
+                [self.mol.coords[i][0], self.mol.coords[j][0]],
+                [self.mol.coords[i][1], self.mol.coords[j][1]],
+                [self.mol.coords[i][2], self.mol.coords[j][2]],
+                color="grey", linewidth=1.5, alpha=0.7,
+            )
+
+    def _build_legend(
+        self,
+        ax: plt.Axes,
+        extra_items: list[tuple[str, str]] | None = None,
+        extra_patches: list[Patch] | None = None,
+    ) -> None:
+        """Build and add a legend with atom elements and optional extra items."""
         unique_atoms = self.mol.get_unique_atoms()
         legend_elements = []
         for element in unique_atoms:
-            color = self.mol.atom_colors.get(element, 'grey')
-            legend_elements.append(Line2D([0], [0], marker='o', color='w', label=element,
-                                        markerfacecolor=color, markersize=12, markeredgecolor='k'))  # Увеличен размер маркеров
+            color = self.mol.atom_colors.get(element, "grey")
+            legend_elements.append(
+                Line2D([0], [0], marker="o", color="w", label=element,
+                       markerfacecolor=color, markersize=12, markeredgecolor="k")
+            )
+        if extra_items:
+            for label, color in extra_items:
+                legend_elements.append(
+                    Line2D([0], [0], marker="o", color="w", label=label,
+                           markerfacecolor=color, markersize=12, markeredgecolor="k")
+                )
+        if extra_patches:
+            legend_elements.extend(extra_patches)
 
         ax.legend(
             handles=legend_elements,
-            loc='upper right',
-            fontsize=8,  
+            loc="upper left",
+            bbox_to_anchor=(0.0, 1.0),
+            fontsize=7,
             frameon=True,
-            facecolor='white',
-            edgecolor='black',
-            markerscale=0.5 
+            facecolor="white",
+            edgecolor="#cccccc",
+            markerscale=0.4,
+            handletextpad=0.3,
+            borderpad=0.4,
+            labelspacing=0.3,
         )
 
-
-    def _style_axis(self, ax, azim, elev, axis_labels=False):
+    def _style_axis(self, ax: plt.Axes, azim: float, elev: float) -> None:
         ax.view_init(elev=elev, azim=azim)
         ax.grid(False)
         ax.set_axis_off()
+        ax.xaxis.pane.set_edgecolor("w")
+        ax.yaxis.pane.set_edgecolor("w")
+        ax.zaxis.pane.set_edgecolor("w")
 
-        if not axis_labels:
-            ax.xaxis.pane.set_edgecolor('w')
-            ax.yaxis.pane.set_edgecolor('w')
-            ax.zaxis.pane.set_edgecolor('w')
-
-    def _plot_atoms_as_points(self, ax):
-        # Отображение атомов в виде точек
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, 'grey')
-            ax.scatter(coord[0], coord[1], coord[2], color=color, s=300, edgecolors='k', alpha=0.9)
+        # Zoom camera closer to molecule (default dist=10)
+        ax.dist = 6
 
 
 class SimpleMoleculePlot(BasePlot):
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D visualization of a molecule')
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis()
         self._plot_atoms_as_points(ax)
-        self._add_legend(ax)
+        self._build_legend(ax)
         self._style_axis(ax, azim, elev)
-        # plt.tight_layout()
         return fig
 
 
 class VDWMoleculePlot(BasePlot):
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis('3D visualization with van der Waals radii')
-
-        # Атомы как сферы
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:30j, 0:np.pi:15j]
-            x = radius * np.cos(u) * np.sin(v) + coord[0]
-            y = radius * np.sin(u) * np.sin(v) + coord[1]
-            z = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x, y, z, color=color, linewidth=2, antialiased=True, shade=True, alpha=0.8)
-
-        # Связи между близкими атомами
-        for i, coord1 in enumerate(self.mol.coords):
-            for j, coord2 in enumerate(self.mol.coords):
-                if i < j:
-                    distance = np.linalg.norm(coord1 - coord2)
-                    if distance < 2.0:
-                        ax.plot([coord1[0], coord2[0]], 
-                                [coord1[1], coord2[1]], 
-                                [coord1[2], coord2[2]], 
-                                color='grey', linewidth=1.5, alpha=0.7)
-
-        self._add_legend(ax)
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis()
+        self._plot_vdw_spheres(ax, alpha=0.8, linewidth=2)
+        self._plot_bonds(ax)
+        self._build_legend(ax)
         self._style_axis(ax, azim, elev)
-        # plt.tight_layout()
         return fig
 
 
 class HullMoleculePlot(BasePlot):
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis("3D visualisation of a molecule with a convex hull")
-
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:30j, 0:np.pi:15j]
-            x = radius * np.cos(u) * np.sin(v) + coord[0]
-            y = radius * np.sin(u) * np.sin(v) + coord[1]
-            z = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x, y, z, color=color, linewidth=0, antialiased=True, shade=True, alpha=0.6)
-
-        hull = ConvexHull(self.mol.coords)
-        for simplex in hull.simplices:
-            triangle = self.mol.coords[simplex]
-            x = triangle[:, 0]
-            y = triangle[:, 1]
-            z = triangle[:, 2]
-            ax.plot_trisurf(x, y, z, color='cyan', alpha=0.5, linewidth=0)
-
-        self._add_legend(ax)
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis()
+        self._plot_vdw_spheres(ax, alpha=0.6)
+        self._plot_hull_surface(ax, color="cyan", alpha=0.5)
+        self._build_legend(ax)
         self._style_axis(ax, azim, elev)
-        # plt.tight_layout()
         return fig
 
 
 class GridHullPlot(BasePlot):
-    def __init__(self, molecule_data: MoleculeData, grid_resolution=0.1):
+    def __init__(self, molecule_data: MoleculeData, grid_resolution: float = 0.1) -> None:
         super().__init__(molecule_data)
         self.grid_resolution = grid_resolution
 
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis("3D molecule with a grid of points and a convex shell")
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis()
 
-        number_of_points = 20000
+        number_of_points = 20_000
 
         hull = ConvexHull(self.mol.coords)
         max_radius = max(self.mol.vdw_radii.values())
@@ -169,48 +214,29 @@ class GridHullPlot(BasePlot):
         cube_points = np.random.uniform(low=min_coords, high=max_coords, size=(number_of_points, 3))
 
         ax.scatter(cube_points[:, 0], cube_points[:, 1], cube_points[:, 2],
-               color='blue', s=1, alpha=0.6, label='Random points')
+                   color="blue", s=1, alpha=0.6, label="Random points")
 
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:30j, 0:np.pi:15j]
-            x_sphere = radius * np.cos(u) * np.sin(v) + coord[0]
-            y_sphere = radius * np.sin(u) * np.sin(v) + coord[1]
-            z_sphere = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, linewidth=0, shade=True, alpha=0.6)
+        self._plot_vdw_spheres(ax, alpha=0.6)
 
         for simplex in hull.simplices:
             triangle = self.mol.coords[simplex]
-            x_triangle = triangle[:, 0]
-            y_triangle = triangle[:, 1]
-            z_triangle = triangle[:, 2]
-            ax.plot_trisurf(x_triangle, y_triangle, z_triangle, color='cyan', alpha=0.5, linewidth=0)
+            ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2],
+                            color="cyan", alpha=0.5, linewidth=0)
 
-        unique_atoms = self.mol.get_unique_atoms()
-        legend_elements = []
-        for element in unique_atoms:
-            color = self.mol.atom_colors.get(element, '#808080')
-            legend_elements.append(Line2D([0], [0], marker='o', color='w', label=element,
-                                          markerfacecolor=color, markersize=14, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Grid of points',
-                                      markerfacecolor='blue', markersize=10, markeredgecolor='k'))
-        ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True, facecolor='white', edgecolor='black')
-
+        self._build_legend(ax, extra_items=[("Grid of points", "blue")])
         self._style_axis(ax, azim, elev)
-        # plt.tight_layout()
         return fig
 
 
 class PointsInHullPlot(BasePlot):
-    def __init__(self, molecule_data: MoleculeData, grid_resolution=0.25):
+    def __init__(self, molecule_data: MoleculeData, grid_resolution: float = 0.25) -> None:
         super().__init__(molecule_data)
         self.grid_resolution = grid_resolution
 
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis("3D molecule with dots inside a convex hull")
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis()
 
-        number_of_points = 80000
+        number_of_points = 80_000
 
         hull = ConvexHull(self.mol.coords)
         hull_points = self.mol.coords[hull.vertices]
@@ -225,148 +251,95 @@ class PointsInHullPlot(BasePlot):
         points_in_hull = random_points[inside_hull]
 
         ax.scatter(points_in_hull[:, 0], points_in_hull[:, 1], points_in_hull[:, 2],
-               color='cyan', s=3, alpha=0.8, label='Random points inside a convex hull')
+                   color="cyan", s=3, alpha=0.8, label="Random points inside a convex hull")
 
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:30j, 0:np.pi:15j]
-            x_sphere = radius * np.cos(u) * np.sin(v) + coord[0]
-            y_sphere = radius * np.sin(u) * np.sin(v) + coord[1]
-            z_sphere = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, linewidth=0, shade=True, alpha=0.6)
+        self._plot_vdw_spheres(ax, alpha=0.6)
 
         for simplex in hull.simplices:
             triangle = self.mol.coords[simplex]
             ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2],
-                            color='cyan', alpha=0, linewidth=0)
+                            color="cyan", alpha=0, linewidth=0)
 
-        unique_atoms = self.mol.get_unique_atoms()
-        legend_elements = []
-        for element in unique_atoms:
-            color = self.mol.atom_colors.get(element, '#808080')
-            legend_elements.append(Line2D([0], [0], marker='o', color='w', label=element,
-                                          markerfacecolor=color, markersize=14, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points in ConvexHull',
-                                      markerfacecolor='blue', markersize=10, markeredgecolor='k'))
-        ax.legend(handles=legend_elements, loc='upper right', fontsize=8, frameon=True, facecolor='white', edgecolor='black')
-
+        self._build_legend(ax, extra_items=[("Points in ConvexHull", "blue")])
         self._style_axis(ax, azim, elev)
-        # plt.tight_layout()
         return fig
 
 
 class PointsInAtomsPlot(BasePlot):
-    def __init__(self, molecule_data: MoleculeData, 
-                 grid_resolution=0.3, 
-                 vdw_alpha=0.6, 
-                 dot_size=1.0,
-                 dot_color_in_atoms='green',
-                 dot_color_cavities='blue', 
-                 plot_size=(20, 19)):
-        
+    def __init__(
+        self,
+        molecule_data: MoleculeData,
+        vdw_alpha: float = 0.6,
+        dot_size: float = 1.0,
+        dot_color_in_atoms: str = "green",
+        dot_color_cavities: str = "blue",
+        plot_size: tuple[float, float] = (6, 5),
+        number_of_points: int = 100_000,
+    ) -> None:
         super().__init__(molecule_data)
-        self.grid_resolution = grid_resolution
         self.vdw_alpha = vdw_alpha
         self.plot_size = plot_size
         self.dot_size = dot_size
         self.dot_color_in_atoms = dot_color_in_atoms
         self.dot_color_cavities = dot_color_cavities
+        self.number_of_points = number_of_points
 
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis("3D visualisation: points inside atoms and cavities", figsize=self.plot_size)
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis(figsize=self.plot_size)
 
-        number_of_points = 100000
-
-        hull = ConvexHull(self.mol.coords)
-        hull_points = self.mol.coords[hull.vertices]
-        max_radius = max(self.mol.vdw_radii.values())
-        min_coords = np.min(hull_points, axis=0) - max_radius
-        max_coords = np.max(hull_points, axis=0) + max_radius
-
-        random_points = np.random.uniform(low=min_coords, high=max_coords, size=(number_of_points, 3))
-
-        delaunay = Delaunay(hull_points)
-        inside_hull = delaunay.find_simplex(random_points) >= 0
-        points_in_hull = random_points[inside_hull]
-
-        atom_radii = np.array([self.mol.vdw_radii.get(atom, 1.5) for atom in self.mol.atoms])
-        tree = cKDTree(self.mol.coords)
-        max_atom_radius = max(atom_radii)
-        indices = tree.query_ball_point(points_in_hull, r=max_atom_radius)
-
-        inside_atom = np.zeros(len(points_in_hull), dtype=bool)
-        for i, inds in enumerate(indices):
-            point = points_in_hull[i]
-            for j in inds:
-                distance = np.linalg.norm(point - self.mol.coords[j])
-                if distance <= atom_radii[j]:
-                    inside_atom[i] = True
-                    break
-
-        ax.scatter(points_in_hull[inside_atom, 0],
-                   points_in_hull[inside_atom, 1],
-                   points_in_hull[inside_atom, 2],
-                   color=self.dot_color_in_atoms, s=self.dot_size, alpha=0.2, label='Points inside vdw spheres')
-
-        ax.scatter(points_in_hull[~inside_atom, 0],
-                   points_in_hull[~inside_atom, 1],
-                   points_in_hull[~inside_atom, 2],
-                   color=self.dot_color_cavities, s=self.dot_size, alpha=0.7, label='Points in the cavities')
-
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-            x_sphere = radius * np.cos(u) * np.sin(v) + coord[0]
-            y_sphere = radius * np.sin(u) * np.sin(v) + coord[1]
-            z_sphere = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, alpha=self.vdw_alpha)
-
-        for simplex in hull.simplices:
-            triangle = self.mol.coords[simplex]
-            ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2], color='cyan', alpha=0)
-
-        unique_atoms = self.mol.get_unique_atoms()
-        legend_elements = []
-        for element in unique_atoms:
-            color = self.mol.atom_colors.get(element, '#808080')
-            legend_elements.append(Line2D([0], [0], marker='o', color='w', label=element,
-                                          markerfacecolor=color, markersize=12, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points in the cavities',
-                                      markerfacecolor='blue', markersize=12, markeredgecolor='k'))
-        legend_elements.append(Line2D([0], [0], marker='o', color='w', label='Points inside vdw spheres',
-                                      markerfacecolor='green', markersize=12, markeredgecolor='k'))
-
-        ax.legend(
-            handles=legend_elements,
-            loc='upper right',
-            fontsize=8,  
-            # frameon=True,
-            facecolor='white',
-            edgecolor='black',
-            markerscale=0.5 
+        result = classify_points(
+            self.mol.coords,
+            self.mol.get_radii_array(),
+            num_points=self.number_of_points,
         )
 
+        ax.scatter(
+            result.points_in_hull[result.inside_atoms_mask, 0],
+            result.points_in_hull[result.inside_atoms_mask, 1],
+            result.points_in_hull[result.inside_atoms_mask, 2],
+            color=self.dot_color_in_atoms, s=self.dot_size, alpha=0.2,
+            label="Points inside vdw spheres",
+        )
+
+        ax.scatter(
+            result.points_in_hull[~result.inside_atoms_mask, 0],
+            result.points_in_hull[~result.inside_atoms_mask, 1],
+            result.points_in_hull[~result.inside_atoms_mask, 2],
+            color=self.dot_color_cavities, s=self.dot_size, alpha=0.7,
+            label="Points in the cavities",
+        )
+
+        self._plot_vdw_spheres(ax, alpha=self.vdw_alpha, u_res=20, v_res=10)
+
+        for simplex in result.hull.simplices:
+            triangle = self.mol.coords[simplex]
+            ax.plot_trisurf(triangle[:, 0], triangle[:, 1], triangle[:, 2],
+                            color="cyan", alpha=0)
+
+        self._build_legend(ax, extra_items=[
+            ("Points in the cavities", "blue"),
+            ("Points inside vdw spheres", "green"),
+        ])
         self._style_axis(ax, azim, elev)
-        plt.tight_layout(pad=0.1)
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         return fig
 
 
-
 class VisualizationCavityWithConvex(BasePlot):
-    def __init__(self, molecule_data: MoleculeData, grid_resolution=0.3,
-                 number_of_points: int = 100000,
-                 show_hull: bool = True,
-                 dot_color: str = 'blue',
-                 vdw_alpha: float = 0.3,
-                 hull_face_color: str = 'cyan',
-                 hull_face_alpha: float = 0.12,
-                 hull_edge_color: str = 'k',
-                 hull_edge_width: float = 0.4,
-                 dot_size: float = 8.0):
+    def __init__(
+        self,
+        molecule_data: MoleculeData,
+        number_of_points: int = 100_000,
+        show_hull: bool = True,
+        dot_color: str = "blue",
+        vdw_alpha: float = 0.3,
+        hull_face_color: str = "cyan",
+        hull_face_alpha: float = 0.12,
+        hull_edge_color: str = "k",
+        hull_edge_width: float = 0.4,
+        dot_size: float = 8.0,
+    ) -> None:
         super().__init__(molecule_data)
-        self.grid_resolution = grid_resolution
         self.number_of_points = number_of_points
         self.show_hull = show_hull
         self.dot_color = dot_color
@@ -377,106 +350,51 @@ class VisualizationCavityWithConvex(BasePlot):
         self.hull_edge_width = hull_edge_width
         self.dot_size = dot_size
 
-    def plot(self, azim=45, elev=30):
-        fig, ax = self._create_3d_axis(
-            "3D visualisation: points inside atoms and cavities",
-            figsize=(8, 7)
+    def plot(self, azim: float = 45, elev: float = 30) -> plt.Figure:
+        fig, ax = self._create_3d_axis(figsize=(6, 5))
+
+        result = classify_points(
+            self.mol.coords,
+            self.mol.get_radii_array(),
+            num_points=self.number_of_points,
         )
 
-        hull = ConvexHull(self.mol.coords)
-        hull_points = self.mol.coords[hull.vertices]
-
-        max_radius = max(self.mol.vdw_radii.values()) if self.mol.vdw_radii else 1.5
-        min_coords = np.min(hull_points, axis=0) - max_radius
-        max_coords = np.max(hull_points, axis=0) + max_radius
-
-        random_points = np.random.uniform(
-            low=min_coords, high=max_coords, size=(self.number_of_points, 3)
+        ax.scatter(
+            result.points_in_hull[~result.inside_atoms_mask, 0],
+            result.points_in_hull[~result.inside_atoms_mask, 1],
+            result.points_in_hull[~result.inside_atoms_mask, 2],
+            color=self.dot_color, s=self.dot_size, alpha=0.7,
+            label="Points in the cavities", linewidths=0.5,
         )
 
-        delaunay = Delaunay(hull_points)
-        inside_hull = delaunay.find_simplex(random_points) >= 0
-        points_in_hull = random_points[inside_hull]
+        self._plot_vdw_spheres(ax, alpha=self.vdw_alpha, u_res=20, v_res=10)
 
-        atom_radii = np.array([self.mol.vdw_radii.get(atom, 1.5) for atom in self.mol.atoms])
-        tree = cKDTree(self.mol.coords)
-        max_atom_radius = float(atom_radii.max()) if len(atom_radii) else 1.5
-
-        neighbor_indices = tree.query_ball_point(points_in_hull, r=max_atom_radius)
-
-        inside_atom = np.zeros(len(points_in_hull), dtype=bool)
-        for i, inds in enumerate(neighbor_indices):
-            point = points_in_hull[i]
-            for j in inds:
-                distance = np.linalg.norm(point - self.mol.coords[j])
-                if distance <= atom_radii[j]:
-                    inside_atom[i] = True
-                    break
-
-        ax.scatter(points_in_hull[~inside_atom, 0],
-                   points_in_hull[~inside_atom, 1],
-                   points_in_hull[~inside_atom, 2],
-                   color=self.dot_color, s=self.dot_size, alpha=0.7, label='Points in the cavities',
-                   linewidths=0.5
-                   )
-
-        for atom, coord in zip(self.mol.atoms, self.mol.coords):
-            color = self.mol.atom_colors.get(atom, '#808080')
-            radius = self.mol.vdw_radii.get(atom, 1.5)
-            u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
-            x_sphere = radius * np.cos(u) * np.sin(v) + coord[0]
-            y_sphere = radius * np.sin(u) * np.sin(v) + coord[1]
-            z_sphere = radius * np.cos(v) + coord[2]
-            ax.plot_surface(x_sphere, y_sphere, z_sphere, color=color, alpha=self.vdw_alpha)
-
+        extra_patches = []
         if self.show_hull:
-            hull_faces = [self.mol.coords[simplex] for simplex in hull.simplices]
+            hull_faces = [self.mol.coords[simplex] for simplex in result.hull.simplices]
             hull_mesh = Poly3DCollection(
                 hull_faces,
                 facecolor=self.hull_face_color,
                 edgecolor=self.hull_edge_color,
                 linewidth=self.hull_edge_width,
-                alpha=self.hull_face_alpha
+                alpha=self.hull_face_alpha,
             )
             hull_mesh.set_zorder(0)
             ax.add_collection3d(hull_mesh)
-
-        unique_atoms = self.mol.get_unique_atoms()
-        legend_elements = []
-        for element in unique_atoms:
-            color = self.mol.atom_colors.get(element, '#808080')
-            legend_elements.append(
-                Line2D([0], [0], marker='o', color='w', label=element,
-                       markerfacecolor=color, markersize=12, markeredgecolor='k')
+            extra_patches.append(
+                Patch(
+                    facecolor=self.hull_face_color,
+                    edgecolor=self.hull_edge_color,
+                    label="Convex hull",
+                    alpha=self.hull_face_alpha,
+                )
             )
 
-        legend_elements.append(
-            Line2D([0], [0], marker='o', color='w', label='Points in the cavities',
-                   markerfacecolor='blue', markersize=12, markeredgecolor='k')
+        self._build_legend(
+            ax,
+            extra_items=[("Points in the cavities", "blue")],
+            extra_patches=extra_patches,
         )
-        
-        # legend_elements.append(
-        #     Line2D([0], [0], marker='o', color='w', label='Points inside vdw spheres',
-        #            markerfacecolor='green', markersize=12, markeredgecolor='k')
-        # )
-        
-        if self.show_hull:
-            legend_elements.append(
-                Patch(facecolor=self.hull_face_color,
-                      edgecolor=self.hull_edge_color,
-                      label='Convex hull',
-                      alpha=self.hull_face_alpha)
-            )
-
-        ax.legend(
-            handles=legend_elements,
-            loc='upper right',
-            fontsize=8,
-            facecolor='white',
-            edgecolor='black',
-            markerscale=0.5
-        )
-
         self._style_axis(ax, azim, elev)
-        plt.tight_layout(pad=0.1)
+        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         return fig
